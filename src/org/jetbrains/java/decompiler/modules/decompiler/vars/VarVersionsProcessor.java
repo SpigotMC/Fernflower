@@ -31,6 +31,7 @@ import org.jetbrains.java.decompiler.util.FastSparseSetFactory.FastSparseSet;
 
 import java.util.*;
 import java.util.Map.Entry;
+import org.jetbrains.java.decompiler.util.SortUtil;
 
 public class VarVersionsProcessor {
 
@@ -254,9 +255,10 @@ public class VarVersionsProcessor {
     HashMap<Integer, Integer> mapOriginalVarIndices = new HashMap<Integer, Integer>();
 
     // map var-version paars on new var indexes
-    HashSet<VarVersionPaar> set = new HashSet<VarVersionPaar>(mapExprentMinTypes.keySet());
-    for (VarVersionPaar vpaar : set) {
-
+    // Spigot Start
+    for (Iterator<VarVersionPaar> iter = SortUtil.sortComparable(mapExprentMinTypes.keySet().iterator()); iter.hasNext();) {
+      VarVersionPaar vpaar = iter.next();
+      // Spigot End
       if (vpaar.version >= 0) {
         int newindex = vpaar.version == 1 ? vpaar.var :
                        ccon.getCounterAndIncrement(CounterContainer.VAR_COUNTER);

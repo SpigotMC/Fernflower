@@ -131,7 +131,7 @@ public class ClassWrapper {
 
           int varindex = 0;
           for (int i = 0; i < paramcount; i++) {
-            varproc.setVarName(new VarVersionPaar(varindex, 0), vc.getFreeName(varindex));
+            varproc.setVarName(new VarVersionPaar(varindex, 0, classStruct.qualifiedName, false), vc.getFreeName(varindex));
 
             if (thisvar) {
               if (i == 0) {

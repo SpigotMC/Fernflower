@@ -17,10 +17,12 @@ package org.jetbrains.java.decompiler.modules.decompiler.vars;
 
 import org.jetbrains.java.decompiler.modules.decompiler.exps.VarExprent;
 
-public class VarVersionPaar {
+public class VarVersionPaar implements Comparable<VarVersionPaar> { // Spigot
 
   public int var;
   public int version;
+  public String type;
+  public boolean varargs;
 
   private int hashCode = -1;
 
@@ -29,9 +31,11 @@ public class VarVersionPaar {
     this.version = version;
   }
 
-  public VarVersionPaar(Integer var, Integer version) {
-    this.var = var.intValue();
-    this.version = version.intValue();
+  public VarVersionPaar(int var, int version, String type, boolean varargs) {
+    this.var = var;
+    this.version = version;
+    this.type = type;
+    this.varargs = varargs;
   }
 
   public VarVersionPaar(VarExprent var) {
@@ -60,4 +64,14 @@ public class VarVersionPaar {
   public String toString() {
     return "(" + var + "," + version + ")";
   }
+
+  // Spigot Start
+  @Override
+  public int compareTo(VarVersionPaar o) {
+    if (this.var != o.var) {
+      return this.var - o.var;
+    }
+    return this.version - o.version;
+  }
+  // Spigot End
 }

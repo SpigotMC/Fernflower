@@ -373,13 +373,26 @@ public class InvocationExprent extends Exprent {
     return buf.toString();
   }
 
+  private Set<StructClass> addAllSuper(Set<StructClass> set, String clazz) {
+    StructClass cstr = DecompilerContext.getStructContext().getClass(clazz);
+    if (cstr == null) {
+      return set;
+    }
+    set.add(cstr);
+    for (String inter : cstr.getInterfaceNames()) {
+      addAllSuper(set, inter);
+    }
+    addAllSuper(set, cstr.superClass.getString());
+
+    return set;
+  }
+
   private Set<Integer> getAmbiguousParameters() {
 
     Set<Integer> ret = new HashSet<Integer>();
 
-    StructClass cstr = DecompilerContext.getStructContext().getClass(classname);
-    if (cstr != null) {
-      List<MethodDescriptor> lstMethods = new ArrayList<MethodDescriptor>();
+    List<MethodDescriptor> lstMethods = new ArrayList<MethodDescriptor>();
+    for (StructClass cstr : addAllSuper(new HashSet<StructClass>(), classname)) {
       for (StructMethod meth : cstr.getMethods()) {
         if (name.equals(meth.getName())) {
           MethodDescriptor md = MethodDescriptor.parseDescriptor(meth.getDescriptor());

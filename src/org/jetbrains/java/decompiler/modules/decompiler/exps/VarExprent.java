@@ -27,11 +27,12 @@ import org.jetbrains.java.decompiler.modules.decompiler.vars.VarTypeProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.VarVersionPaar;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.SortUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class VarExprent extends Exprent {
+public class VarExprent extends Exprent implements SortUtil.Indexed { // Spigot
 
   public static final int STACK_BASE = 10000;
 
@@ -94,15 +95,16 @@ public class VarExprent extends Exprent {
     }
     else {
       String name = null;
+      String typeName = ExprProcessor.getCastTypeName(getVartype()); // Spigot
       if (processor != null) {
-        name = processor.getVarName(new VarVersionPaar(index, version));
+        name = processor.getVarName(new VarVersionPaar(index, version, typeName, false)); // Spigot
       }
 
       if (definition) {
         if (processor != null && processor.getVarFinal(new VarVersionPaar(index, version)) == VarTypeProcessor.VAR_FINALEXPLICIT) {
           buffer.append("final ");
         }
-        buffer.append(ExprProcessor.getCastTypeName(getVartype())).append(" ");
+        buffer.append(typeName).append(" "); // Spigot
       }
       buffer.append(name == null ? ("var" + index + (version == 0 ? "" : "_" + version)) : name);
     }
@@ -127,6 +129,13 @@ public class VarExprent extends Exprent {
   public void setIndex(int index) {
     this.index = index;
   }
+
+  // Spigot Start
+  @Override
+  public int getSortIndex() {
+    return (definition) ? index : -1;
+  }
+  // Spigot End
 
   public VarType getVartype() {
     VarType vt = null;

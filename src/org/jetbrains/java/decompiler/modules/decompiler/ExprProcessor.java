@@ -41,6 +41,7 @@ import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.*;
+import org.jetbrains.java.decompiler.util.SortUtil;
 
 public class ExprProcessor implements CodeConstants {
 
@@ -814,8 +815,10 @@ public class ExprProcessor implements CodeConstants {
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
     StringBuilder buf = new StringBuilder();
-
-    for (Exprent expr : lst) {
+    // Spigot Start    
+    for (Iterator<Exprent> iter = SortUtil.sortIndexed(lst.iterator()); iter.hasNext();) {
+      Exprent expr = iter.next();
+      // Spigot End
       String content = expr.toJava(indent, tracer);
       if (content.length() > 0) {
         if (expr.type != Exprent.EXPRENT_VAR || !((VarExprent)expr).isClassdef()) {
@@ -877,7 +880,7 @@ public class ExprProcessor implements CodeConstants {
 
     boolean cast =
       !leftType.isSuperset(rightType) && (rightType.equals(VarType.VARTYPE_OBJECT) || leftType.type != CodeConstants.TYPE_OBJECT);
-    cast |= castAlways;
+    cast |= castAlways && !leftType.equals(rightType); // Spigot
 
     if (!cast && castNull && rightType.type == CodeConstants.TYPE_NULL) {
       // check for a nameless anonymous class

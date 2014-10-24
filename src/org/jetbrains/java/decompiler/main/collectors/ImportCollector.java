@@ -145,7 +145,7 @@ public class ImportCollector {
       // exclude a current class or one of the nested ones, java.lang and empty packages
       if (!setNotImportedNames.contains(ent.getKey()) &&
           !JAVA_LANG_PACKAGE.equals(ent.getValue()) &&
-          !ent.getValue().isEmpty()) {
+          !ent.getValue().isEmpty() && !ent.getValue().equals(this.currentPackagePoint)) { // Spigot: Remove same package imports
         res.add(ent.getValue() + "." + ent.getKey());
       }
     }

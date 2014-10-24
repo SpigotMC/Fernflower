@@ -188,6 +188,7 @@ public class ClassWriter {
 
       // fields
       boolean enumFields = false;
+      boolean endEnumWritten = false; // Spigot
 
       for (StructField fd : cl.getFields()) {
         boolean hide = fd.isSynthetic() && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
@@ -202,19 +203,24 @@ public class ClassWriter {
           }
           enumFields = true;
         }
-        else if (enumFields) {
+        else if (enumFields && !endEnumWritten) { // Spigot
           buffer.append(';');
           buffer.append(lineSeparator);
           buffer.append(lineSeparator);
-          enumFields = false;
+          endEnumWritten = true; // Spigot
         }
 
         fieldToJava(wrapper, cl, fd, buffer, indent + 1, dummy_tracer); // FIXME: insert real tracer
 
         hasContent = true;
       }
-
-      if (enumFields) {
+      // Spigot Start
+      int flags = node.type == ClassNode.CLASS_ROOT ? cl.getAccessFlags() : node.access;
+      boolean isEnum = DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM) && (flags & CodeConstants.ACC_ENUM) != 0;
+      if (isEnum && !endEnumWritten) {
+        buffer.append(lineSeparator);
+        buffer.append(lineSeparator);
+        // Spigot End
         buffer.append(';');
         buffer.append(lineSeparator);
       }
@@ -385,6 +391,7 @@ public class ClassWriter {
 
     buffer.append('{');
     buffer.append(lineSeparator);
+    buffer.append(lineSeparator); // Spigot
   }
 
   private void fieldToJava(ClassWrapper wrapper, StructClass cl, StructField fd, TextBuffer buffer, int indent, BytecodeMappingTracer tracer) {
@@ -514,7 +521,7 @@ public class ClassWriter {
             buffer.append(typeName);
             buffer.append(" ");
 
-            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0));
+            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0, typeName, false)); // Spigot
             buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
             firstParameter = false;
@@ -701,6 +708,10 @@ public class ClassWriter {
         int start = isEnum && init && descriptor == null ? 2 : 0;
         int params = descriptor == null ? md.params.length : descriptor.params.size();
         for (int i = start; i < params; i++) {
+          // Spigot Start
+          String typeName;
+          boolean isVarArg;
+          // Spigot end
           if (signFields == null || signFields.get(i) == null) {
             if (!firstParameter) {
               buffer.append(", ");
@@ -715,12 +726,12 @@ public class ClassWriter {
             if (descriptor != null) {
               GenericType parameterType = descriptor.params.get(i);
 
-              boolean isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0);
+              isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0); // Spigot
               if (isVarArg) {
                 parameterType.arraydim--;
               }
 
-              String typeName = GenericMain.getGenericCastTypeName(parameterType);
+              typeName = GenericMain.getGenericCastTypeName(parameterType); // Spigot
               if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName) &&
                   DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
                 typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT);
@@ -735,12 +746,12 @@ public class ClassWriter {
             else {
               VarType parameterType = md.params[i].copy();
 
-              boolean isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0);
+              isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0); // Spigot
               if (isVarArg) {
                 parameterType.decArrayDim();
               }
 
-              String typeName = ExprProcessor.getCastTypeName(parameterType);
+              typeName = ExprProcessor.getCastTypeName(parameterType); // Spigot
               if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName) &&
                   DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
                 typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT);
@@ -754,7 +765,7 @@ public class ClassWriter {
             }
 
             buffer.append(' ');
-            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0));
+            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0, typeName, isVarArg)); // Spigot
             buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
             firstParameter = false;
@@ -918,7 +929,7 @@ public class ClassWriter {
   }
 
   private static void appendComment(TextBuffer buffer, String comment, int indent, String lineSeparator) {
-    buffer.appendIndent(indent).append("// $FF: ").append(comment).append(lineSeparator);
+    // buffer.appendIndent(indent).append("// $FF: ").append(comment).append(lineSeparator); // Spigot: Squash comments
   }
 
   private static final String[] ANNOTATION_ATTRIBUTES = {

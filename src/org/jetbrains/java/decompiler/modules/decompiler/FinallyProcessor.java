@@ -529,7 +529,7 @@ public class FinallyProcessor {
     }
     while (index < lst.size());
 
-    HashSet<BasicBlock> res = new HashSet<BasicBlock>();
+    HashSet<BasicBlock> res = new LinkedHashSet<BasicBlock>(); // Spigot: Fix determinism
 
     for (Statement st : lst) {
       res.add(((BasicBlockStatement)st).getBlock());
@@ -571,7 +571,7 @@ public class FinallyProcessor {
     }
 
     // identify start blocks
-    HashSet<BasicBlock> startBlocks = new HashSet<BasicBlock>();
+    HashSet<BasicBlock> startBlocks = new LinkedHashSet<BasicBlock>(); // Spigot: Fix determinism
     for (BasicBlock block : tryBlocks) {
       startBlocks.addAll(block.getSuccs());
     }
