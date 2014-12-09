@@ -42,6 +42,7 @@ import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.struct.gen.generics.*;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -179,7 +180,17 @@ public class ClassWriter {
 
       // write class definition
       int start_class_def = buffer.length();
-      writeClassDefinition(node, buffer, indent);
+      boolean empty = cl.getFields().isEmpty() && cl.getMethods().isEmpty();
+      if (cl.hasModifier(CodeConstants.ACC_ENUM)) {
+        empty = true;
+        for (StructField fd : cl.getFields()) {
+          if (fd.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM)) {
+            empty = false;
+            break;
+          }
+        }
+      }
+      writeClassDefinition(node, buffer, indent, empty);
 
 //      // count lines in class definition the easiest way
 //      total_offset_lines = buffer.substring(start_class_def).toString().split(lineSeparator, -1).length - 1;
@@ -189,6 +200,7 @@ public class ClassWriter {
       // fields
       boolean enumFields = false;
       boolean endEnumWritten = false; // Spigot
+      boolean firstEnum = true;
 
       for (StructField fd : cl.getFields()) {
         boolean hide = fd.isSynthetic() && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_SYNTHETIC) ||
@@ -198,8 +210,7 @@ public class ClassWriter {
         boolean isEnum = fd.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM);
         if (isEnum) {
           if (enumFields) {
-            buffer.append(',');
-            buffer.append(lineSeparator);
+            buffer.append(", ");
           }
           enumFields = true;
         }
@@ -210,7 +221,14 @@ public class ClassWriter {
           endEnumWritten = true; // Spigot
         }
 
-        fieldToJava(wrapper, cl, fd, buffer, indent + 1, dummy_tracer); // FIXME: insert real tracer
+        int ind = indent + 1;
+        if (isEnum) {
+          if (!firstEnum) {
+            ind = 0;
+          }
+          firstEnum = false;
+        }
+        fieldToJava(wrapper, cl, fd, buffer, ind, dummy_tracer); // FIXME: insert real tracer
 
         hasContent = true;
       }
@@ -218,8 +236,6 @@ public class ClassWriter {
       int flags = node.type == ClassNode.CLASS_ROOT ? cl.getAccessFlags() : node.access;
       boolean isEnum = DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM) && (flags & CodeConstants.ACC_ENUM) != 0;
       if (isEnum && !endEnumWritten) {
-        buffer.append(lineSeparator);
-        buffer.append(lineSeparator);
         // Spigot End
         buffer.append(';');
         buffer.append(lineSeparator);
@@ -283,12 +299,12 @@ public class ClassWriter {
     DecompilerContext.getLogger().endWriteClass();
   }
 
-  private void writeClassDefinition(ClassNode node, TextBuffer buffer, int indent) {
+  private void writeClassDefinition(ClassNode node, TextBuffer buffer, int indent, boolean empty) {
     String lineSeparator = DecompilerContext.getNewLineSeparator();
 
     if (node.type == ClassNode.CLASS_ANONYMOUS) {
       buffer.append(" {");
-      buffer.append(lineSeparator);
+      if (!empty) buffer.append(lineSeparator);
       return;
     }
 
@@ -390,8 +406,10 @@ public class ClassWriter {
     }
 
     buffer.append('{');
-    buffer.append(lineSeparator);
-    buffer.append(lineSeparator); // Spigot
+    if (!empty) {
+      buffer.append(lineSeparator);
+      buffer.append(lineSeparator); // Spigot
+    }
   }
 
   private void fieldToJava(ClassWrapper wrapper, StructClass cl, StructField fd, TextBuffer buffer, int indent, BytecodeMappingTracer tracer) {
@@ -817,9 +835,10 @@ public class ClassWriter {
 
         //TODO: for now only start line set
         buffer.setCurrentLine(startLine);
-        buffer.append('{').appendLineSeparator();
+        buffer.append('{');
 
         RootStatement root = wrapper.getMethodWrapper(mt.getName(), mt.getDescriptor()).root;
+        boolean empty = false;
 
         if (root != null && !methodWrapper.decompiledWithErrors) { // check for existence
           try {
@@ -827,8 +846,15 @@ public class ClassWriter {
 
             String code = root.toJava(indent + 1, tracer);
 
+            if (Util.rtrim(code).isEmpty()) code = "";
+
             hideMethod = (clinit || dinit || hideConstructor(wrapper, init, throwsExceptions, paramCount)) && code.length() == 0;
 
+            if (!code.isEmpty()) {
+              buffer.appendLineSeparator();
+            } else {
+              empty = true;
+            }
             buffer.append(code);
           }
           catch (Throwable ex) {
@@ -843,7 +869,10 @@ public class ClassWriter {
           buffer.append(lineSeparator);
         }
 
-        buffer.appendIndent(indent).append('}').appendLineSeparator();
+        if (!empty) {
+          buffer.appendIndent(indent);
+        }
+        buffer.append('}').appendLineSeparator();
       }
     }
     finally {

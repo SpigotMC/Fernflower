@@ -115,7 +115,7 @@ public class IfExprent extends Exprent {
   @Override
   public String toJava(int indent, BytecodeMappingTracer tracer) {
     tracer.addMapping(bytecode);
-    return "if(" + condition.toJava(indent, tracer) + ")";
+    return "if (" + condition.toJava(indent, tracer) + ")";
   }
 
   public boolean equals(Object o) {

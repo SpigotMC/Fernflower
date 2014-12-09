@@ -23,11 +23,10 @@ import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
 import org.jetbrains.java.decompiler.modules.decompiler.DecHelper;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.ConstExprent;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.SwitchExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.*;
 
@@ -114,8 +113,24 @@ public class SwitchStatement extends Statement {
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
     StringBuilder buf = new StringBuilder();
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+    String content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.isEmpty()) {
+      buf.append(new_line_separator);
+    }
+    content = first.toJava(indent, tracer);
+    buf.append(content);
+    if (first instanceof BasicBlockStatement && !content.isEmpty()) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent e = exps.get(exps.size() - 1);
+        if (!(e instanceof InvocationExprent
+                || e instanceof FunctionExprent
+                || (e instanceof AssignmentExprent && !(((AssignmentExprent) e).getLeft() instanceof VarExprent && ((VarExprent) ((AssignmentExprent) e).getLeft()).isDefinition())))) {
+          buf.append(new_line_separator);
+        }
+      }
+    }
 
     if (isLabeled()) {
       buf.append(indstr).append("label").append(this.id).append(":").append(new_line_separator);
@@ -147,7 +162,12 @@ public class SwitchStatement extends Statement {
         }
       }
 
-      buf.append(ExprProcessor.jmpWrapper(stat, indent + 1, false, tracer));
+      String c = Util.rtrim(ExprProcessor.jmpWrapper(stat, indent + 1, false, tracer));
+      if (!c.isEmpty()) {
+        buf.append(c);
+        buf.append(new_line_separator);
+      }
+      if (i != caseStatements.size() - 1) buf.append(new_line_separator);
     }
 
     buf.append(indstr).append("}").append(new_line_separator);

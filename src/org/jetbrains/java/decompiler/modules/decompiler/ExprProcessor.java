@@ -42,6 +42,7 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.*;
 import org.jetbrains.java.decompiler.util.SortUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 public class ExprProcessor implements CodeConstants {
 
@@ -758,9 +759,17 @@ public class ExprProcessor implements CodeConstants {
   }
 
   public static String jmpWrapper(Statement stat, int indent, boolean semicolon, BytecodeMappingTracer tracer) {
-    StringBuilder buf = new StringBuilder(stat.toJava(indent, tracer));
-
     String new_line_separator = DecompilerContext.getNewLineSeparator();
+
+    StringBuilder buf = new StringBuilder();
+    String content = stat.toJava(indent, tracer);
+    if (!(stat instanceof IfStatement) && !(stat instanceof DoStatement) && !(stat instanceof SequenceStatement)) {
+      content = Util.rtrim(content);
+    }
+    buf.append(content);
+    if (!(stat instanceof IfStatement) && !(stat instanceof DoStatement) && !(stat instanceof SequenceStatement) && buf.length() != 0) {
+      buf.append(new_line_separator);
+    }
 
     List<StatEdge> lstSuccs = stat.getSuccessorEdges(Statement.STATEDGE_DIRECT_ALL);
     if (lstSuccs.size() == 1) {
@@ -815,12 +824,39 @@ public class ExprProcessor implements CodeConstants {
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
     StringBuilder buf = new StringBuilder();
-    // Spigot Start    
+    // Spigot Start
+    boolean inVar = false;
+    boolean bloodySpecialCaseForNewAssignments = false;
     for (Iterator<Exprent> iter = SortUtil.sortIndexed(lst.iterator()); iter.hasNext();) {
       Exprent expr = iter.next();
       // Spigot End
       String content = expr.toJava(indent, tracer);
       if (content.length() > 0) {
+
+        if (expr instanceof VarExprent || expr instanceof AssignmentExprent) {
+          inVar = true;
+          boolean wasASpecialLittleFlower = bloodySpecialCaseForNewAssignments;
+          bloodySpecialCaseForNewAssignments = expr instanceof VarExprent;
+          if (expr instanceof AssignmentExprent && ((AssignmentExprent) expr).getLeft() instanceof VarExprent) {
+            AssignmentExprent assignmentExprent = (AssignmentExprent) expr;
+            VarExprent var = (VarExprent) assignmentExprent.getLeft();
+            bloodySpecialCaseForNewAssignments = var.isDefinition();
+          }
+          if (wasASpecialLittleFlower && !bloodySpecialCaseForNewAssignments) {
+            buf.append(new_line_separator);
+          }
+        } else if (inVar) {
+          inVar = false;
+          if (!(expr instanceof InvocationExprent
+                  || expr instanceof ExitExprent
+                  || expr instanceof FunctionExprent
+              )
+                  || bloodySpecialCaseForNewAssignments) {
+            bloodySpecialCaseForNewAssignments = false;
+            buf.append(new_line_separator);
+          }
+        }
+
         if (expr.type != Exprent.EXPRENT_VAR || !((VarExprent)expr).isClassdef()) {
           buf.append(indstr);
         }
@@ -832,6 +868,7 @@ public class ExprProcessor implements CodeConstants {
           buf.append(";");
         }
         buf.append(new_line_separator);
+
         tracer.incrementCurrentSourceLine();
       }
     }
@@ -895,7 +932,7 @@ public class ExprProcessor implements CodeConstants {
         res = "(" + res + ")";
       }
 
-      res = "(" + getCastTypeName(leftType) + ")" + res;
+      res = "(" + getCastTypeName(leftType) + ") " + res;
       ret = true;
     }
 

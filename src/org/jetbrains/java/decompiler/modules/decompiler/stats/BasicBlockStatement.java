@@ -23,6 +23,7 @@ import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
+import org.jetbrains.java.decompiler.util.Util;
 
 public class BasicBlockStatement extends Statement {
 
@@ -68,7 +69,7 @@ public class BasicBlockStatement extends Statement {
 
   public String toJava(int indent, BytecodeMappingTracer tracer) {
     return ExprProcessor.listToJava(varDefinitions, indent, tracer) +
-           ExprProcessor.listToJava(exprents, indent, tracer);
+            ExprProcessor.listToJava(exprents, indent, tracer);
   }
 
   public Statement getSimpleCopy() {

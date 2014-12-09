@@ -148,7 +148,7 @@ public class AssignmentExprent extends Exprent {
         res = "(" + res + ")";
       }
 
-      res = "(" + ExprProcessor.getCastTypeName(leftType) + ")" + res;
+      res = "(" + ExprProcessor.getCastTypeName(leftType) + ") " + res;
     }
 
     buffer.append(condtype == CONDITION_NONE ? " = " : funceq[condtype]).append(res);

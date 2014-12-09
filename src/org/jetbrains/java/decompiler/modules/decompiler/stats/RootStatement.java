@@ -36,7 +36,7 @@ public class RootStatement extends Statement {
 
   public String toJava(int indent, BytecodeMappingTracer tracer) {
     return ExprProcessor.listToJava(varDefinitions, indent, tracer) +
-           first.toJava(indent, tracer);
+            first.toJava(indent, tracer);
   }
 
   public Statement getDummyExit() {

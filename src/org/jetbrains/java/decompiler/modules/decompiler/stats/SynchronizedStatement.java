@@ -20,7 +20,7 @@ import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.SequenceHelper;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.ArrayList;
@@ -75,8 +75,26 @@ public class SynchronizedStatement extends Statement {
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
     StringBuilder buf = new StringBuilder();
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+
+    String content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.isEmpty()) {
+      buf.append(new_line_separator);
+    }
+
+    content = first.toJava(indent, tracer);
+    buf.append(content);
+    if (first instanceof BasicBlockStatement && !content.isEmpty()) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent e = exps.get(exps.size() - 1);
+        if (!(e instanceof InvocationExprent
+                || e instanceof FunctionExprent
+                || (e instanceof AssignmentExprent && !(((AssignmentExprent) e).getLeft() instanceof VarExprent && ((VarExprent) ((AssignmentExprent) e).getLeft()).isDefinition())))) {
+          buf.append(new_line_separator);
+        }
+      }
+    }
 
     if (isLabeled()) {
       buf.append(indstr).append("label").append(this.id).append(":").append(new_line_separator);

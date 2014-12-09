@@ -21,6 +21,7 @@ import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,7 +99,11 @@ public class DoStatement extends Statement {
 
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
+    String content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.isEmpty()) {
+      buf.append(new_line_separator);
+    }
 
     if (isLabeled()) {
       buf.append(indstr).append("label").append(this.id).append(":").append(new_line_separator);
@@ -107,7 +112,7 @@ public class DoStatement extends Statement {
 
     switch (looptype) {
       case LOOP_DO:
-        buf.append(indstr).append("while(true) {").append(new_line_separator);
+        buf.append(indstr).append("while (true) {").append(new_line_separator);
         tracer.incrementCurrentSourceLine();
         buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
         buf.append(indstr).append("}").append(new_line_separator);
@@ -117,18 +122,18 @@ public class DoStatement extends Statement {
         buf.append(indstr).append("do {").append(new_line_separator);
         tracer.incrementCurrentSourceLine();
         buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
-        buf.append(indstr).append("} while(").append(conditionExprent.get(0).toJava(indent, tracer)).append(");").append(new_line_separator);
+        buf.append(indstr).append("} while (").append(conditionExprent.get(0).toJava(indent, tracer)).append(");").append(new_line_separator);
         tracer.incrementCurrentSourceLine();
         break;
       case LOOP_WHILE:
-        buf.append(indstr).append("while(").append(conditionExprent.get(0).toJava(indent, tracer)).append(") {").append(new_line_separator);
+        buf.append(indstr).append("while (").append(conditionExprent.get(0).toJava(indent, tracer)).append(") {").append(new_line_separator);
         tracer.incrementCurrentSourceLine();
         buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
         buf.append(indstr).append("}").append(new_line_separator);
         tracer.incrementCurrentSourceLine();
         break;
       case LOOP_FOR:
-        buf.append(indstr).append("for(").append(initExprent.get(0) == null ? "" : initExprent.get(0).toJava(indent, tracer)).append("; ")
+        buf.append(indstr).append("for (").append(initExprent.get(0) == null ? "" : initExprent.get(0).toJava(indent, tracer)).append("; ")
           .append(conditionExprent.get(0).toJava(indent, tracer)).append("; ").append(incExprent.get(0).toJava(indent, tracer)).append(") {")
           .append(new_line_separator);
         tracer.incrementCurrentSourceLine();
@@ -137,6 +142,7 @@ public class DoStatement extends Statement {
         tracer.incrementCurrentSourceLine();
     }
 
+    // buf.append(new_line_separator);
     return buf.toString();
   }
 

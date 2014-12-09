@@ -470,7 +470,7 @@ public class FunctionExprent extends Exprent {
       case FUNCTION_NEG:
         return "-" + wrapOperandString(lstOperands.get(0), true, indent, tracer);
       case FUNCTION_CAST:
-        return "(" + lstOperands.get(1).toJava(indent, tracer) + ")" + wrapOperandString(lstOperands.get(0), true, indent, tracer);
+        return "(" + lstOperands.get(1).toJava(indent, tracer) + ") " + wrapOperandString(lstOperands.get(0), true, indent, tracer);
       case FUNCTION_ARRAYLENGTH:
         Exprent arr = lstOperands.get(0);
 
@@ -483,7 +483,7 @@ public class FunctionExprent extends Exprent {
         }
         return res + ".length";
       case FUNCTION_IIF:
-        return wrapOperandString(lstOperands.get(0), true, indent, tracer) + "?" + wrapOperandString(lstOperands.get(1), true, indent, tracer) + ":" +
+        return wrapOperandString(lstOperands.get(0), true, indent, tracer) + " ? " + wrapOperandString(lstOperands.get(1), true, indent, tracer) + " : " +
                wrapOperandString(lstOperands.get(2), true, indent, tracer);
       case FUNCTION_IPP:
         return wrapOperandString(lstOperands.get(0), true, indent, tracer) + "++";
@@ -528,7 +528,7 @@ public class FunctionExprent extends Exprent {
     }
 
     if (functype <= FUNCTION_I2S) {
-      return "(" + ExprProcessor.getTypeName(types[functype - FUNCTION_I2L]) + ")" + wrapOperandString(lstOperands.get(0), true, indent, tracer);
+      return "(" + ExprProcessor.getTypeName(types[functype - FUNCTION_I2L]) + ") " + wrapOperandString(lstOperands.get(0), true, indent, tracer);
     }
 
     //		return "<unknown function>";
