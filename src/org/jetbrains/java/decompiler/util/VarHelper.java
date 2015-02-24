@@ -66,6 +66,11 @@ public class VarHelper {
       return name;
     }
 
+    while (type.contains( "<" )) {
+      type = type.substring(0, type.indexOf('<')) + type.substring(type.indexOf('>') + 1);
+    }
+    type = type.replace( '.', '_' );
+
     if (type.endsWith("]")) {
       type = "a" + type.substring(0, type.indexOf('['));
     } else if (varArgs) {
