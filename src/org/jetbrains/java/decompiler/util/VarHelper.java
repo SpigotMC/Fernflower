@@ -67,7 +67,7 @@ public class VarHelper {
     }
 
     while (type.contains( "<" )) {
-      type = type.substring(0, type.indexOf('<')) + type.substring(type.indexOf('>') + 1);
+      type = type.substring(0, type.indexOf('<')) + type.substring(type.lastIndexOf('>') + 1);
     }
     type = type.replace( '.', '_' );
 
