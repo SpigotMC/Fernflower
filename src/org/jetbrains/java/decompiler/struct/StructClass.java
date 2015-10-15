@@ -24,6 +24,8 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 import org.jetbrains.java.decompiler.util.VBStyleCollection;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /*
   class_file {
@@ -58,6 +60,7 @@ public class StructClass extends StructMember {
   private final String[] interfaceNames;
   private final VBStyleCollection<StructField, String> fields;
   private final VBStyleCollection<StructMethod, String> methods;
+  public final Map<String, Map<Integer, String>> enumSwitchMap = new HashMap<String, Map<Integer, String>>();
 
   private ConstantPool pool;
 
