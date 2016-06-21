@@ -2,6 +2,7 @@ package org.jetbrains.java.decompiler.util;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -80,7 +81,7 @@ public class VarHelper {
     String[] remap = switches.get(type);
     if (remap == null) {
       remap = new String[]{
-        type.toLowerCase()
+        type.toLowerCase(Locale.ENGLISH)
       };
     }
 
