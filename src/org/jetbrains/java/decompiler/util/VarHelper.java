@@ -53,6 +53,12 @@ public class VarHelper {
     switches.put("Boolean", new String[]{
       "obool"
     });
+    switches.put("Double", new String[]{
+      "odouble"
+    });
+    switches.put("Float", new String[]{
+      "ofloat"
+    });
     switches.put("Long", new String[]{
       "olong"
     });
