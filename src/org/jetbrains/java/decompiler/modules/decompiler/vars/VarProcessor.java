@@ -120,6 +120,10 @@ public class VarProcessor {
     mapVarNames.put(varpaar, name);
   }
 
+  public Collection<String> getVarNames() {
+    return mapVarNames != null ? mapVarNames.values() : Collections.EMPTY_SET;
+  }
+
   public int getVarFinal(VarVersionPaar varpaar) {
     return varvers == null ? VarTypeProcessor.VAR_FINAL : varvers.getVarFinal(varpaar);
   }

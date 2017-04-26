@@ -44,6 +44,7 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.*;
 import java.util.Map.Entry;
+import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 
 public class NestedClassProcessor {
 
@@ -277,6 +278,7 @@ public class NestedClassProcessor {
 
           if (expr.type == Exprent.EXPRENT_NEW) {
             NewExprent new_expr = (NewExprent)expr;
+            VarNamesCollector enclosingCollector = new VarNamesCollector(encmeth.varproc.getVarNames());
             if (new_expr.isLambda() && lambda_class_type.equals(new_expr.getNewtype())) {
 
               InvocationExprent inv_dynamic = new_expr.getConstructor();
@@ -284,16 +286,16 @@ public class NestedClassProcessor {
               int param_index = is_static_lambda_content ? 0 : 1;
               int varindex = is_static_lambda_content ? 0 : 1;
 
-              for (int i = 0; i < vars_count; ++i) {
+              for (int i = 0; i < md_content.params.length; ++i) {
+                VarVersionPaar varVersion = new VarVersionPaar(varindex, 0, ExprProcessor.getCastTypeName(md_content.params[i].copy()), false);
+                if (i < vars_count) {
+                  Exprent param = inv_dynamic.getLstParameters().get(param_index + i);
 
-                Exprent param = inv_dynamic.getLstParameters().get(param_index + i);
-
-                if (param.type == Exprent.EXPRENT_VAR) {
-                  VarVersionPaar enc_varpaar = new VarVersionPaar((VarExprent)param);
-                  String enc_varname = encmeth.varproc.getVarName(enc_varpaar);
-
-                  //meth.varproc.setVarName(new VarVersionPaar(varindex, 0), enc_varname);
-                  mapNewNames.put(new VarVersionPaar(varindex, 0), enc_varname);
+                  if (param.type == Exprent.EXPRENT_VAR) {
+                    mapNewNames.put(varVersion, encmeth.varproc.getVarName(new VarVersionPaar((VarExprent) param)));
+                  }
+                } else {
+                  mapNewNames.put(varVersion, enclosingCollector.getFreeName(meth.varproc.getVarName(varVersion)));
                 }
 
                 varindex += md_content.params[i].stack_size;
