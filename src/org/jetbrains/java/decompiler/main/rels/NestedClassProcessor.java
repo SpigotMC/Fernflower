@@ -124,6 +124,9 @@ public class NestedClassProcessor {
    * But they add the field to the END of the fields list.
    */
   private void gatherEnumSwitchMaps(ClassNode node) {
+    if (node.wrapper == null) {
+      return;
+    }
     for (ClassNode child : node.nested) {
       gatherEnumSwitchMaps(child);
     }
@@ -231,7 +234,7 @@ public class NestedClassProcessor {
 
   private static void setLambdaVars(ClassNode parent, ClassNode child) {
 
-    if (child.lambda_information.is_method_reference) { // method reference, no code and no parameters
+    if (parent.wrapper == null || child.lambda_information.is_method_reference) { // method reference, no code and no parameters
       return;
     }
 

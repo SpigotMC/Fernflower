@@ -124,6 +124,7 @@ public class InvocationExprent extends Exprent {
         isStatic = true;
       }
       else {
+        if (!lstParameters.isEmpty())
         instance = lstParameters
           .get(0); // FIXME: remove the first parameter completely from the list. It's the object type for a virtual lambda method.
       }
