@@ -111,7 +111,7 @@ public class ClassWriter {
         }
 
         buffer.append("::");
-        buffer.append(node.lambda_information.content_method_name);
+        buffer.append("<init>".equals(node.lambda_information.content_method_name) ? "new" : node.lambda_information.content_method_name);
       }
       else {
         // lambda method
