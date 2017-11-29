@@ -133,7 +133,13 @@ public class ClassWriter {
                 buffer.append(", ");
               }
 
-              String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0));
+              String typeName = ExprProcessor.getCastTypeName(md_content.params[i].copy());
+              if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName)
+                      && DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
+                typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT);
+              }
+
+              String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0, typeName, false));
               buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
               firstParameter = false;
