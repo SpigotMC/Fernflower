@@ -21,6 +21,8 @@ public class VarVersionPaar {
 
   public int var;
   public int version;
+  public String type;
+  public boolean varargs;
 
   private int hashCode = -1;
 
@@ -29,9 +31,11 @@ public class VarVersionPaar {
     this.version = version;
   }
 
-  public VarVersionPaar(Integer var, Integer version) {
-    this.var = var.intValue();
-    this.version = version.intValue();
+  public VarVersionPaar(int var, int version, String type, boolean varargs) {
+    this.var = var;
+    this.version = version;
+    this.type = type;
+    this.varargs = varargs;
   }
 
   public VarVersionPaar(VarExprent var) {

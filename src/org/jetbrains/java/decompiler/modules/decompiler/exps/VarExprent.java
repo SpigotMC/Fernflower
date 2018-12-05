@@ -94,15 +94,16 @@ public class VarExprent extends Exprent {
     }
     else {
       String name = null;
+      String typeName = ExprProcessor.getCastTypeName(getVartype()); // Spigot
       if (processor != null) {
-        name = processor.getVarName(new VarVersionPaar(index, version));
+        name = processor.getVarName(new VarVersionPaar(index, version, typeName, false)); // Spigot
       }
 
       if (definition) {
         if (processor != null && processor.getVarFinal(new VarVersionPaar(index, version)) == VarTypeProcessor.VAR_FINALEXPLICIT) {
           buffer.append("final ");
         }
-        buffer.append(ExprProcessor.getCastTypeName(getVartype())).append(" ");
+        buffer.append(typeName).append(" "); // Spigot
       }
       buffer.append(name == null ? ("var" + index + (version == 0 ? "" : "_" + version)) : name);
     }

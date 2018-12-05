@@ -42,6 +42,7 @@ import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.struct.gen.generics.*;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -110,7 +111,7 @@ public class ClassWriter {
         }
 
         buffer.append("::");
-        buffer.append(node.lambda_information.content_method_name);
+        buffer.append("<init>".equals(node.lambda_information.content_method_name) ? "new" : node.lambda_information.content_method_name);
       }
       else {
         // lambda method
@@ -132,7 +133,13 @@ public class ClassWriter {
                 buffer.append(", ");
               }
 
-              String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0));
+              String typeName = ExprProcessor.getCastTypeName(md_content.params[i].copy());
+              if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName)
+                      && DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
+                typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT);
+              }
+
+              String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0, typeName, false));
               buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
               firstParameter = false;
@@ -179,7 +186,17 @@ public class ClassWriter {
 
       // write class definition
       int start_class_def = buffer.length();
-      writeClassDefinition(node, buffer, indent);
+      boolean empty = cl.getFields().isEmpty() && cl.getMethods().isEmpty();
+      if (cl.hasModifier(CodeConstants.ACC_ENUM)) {
+        empty = true;
+        for (StructField fd : cl.getFields()) {
+          if (fd.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM)) {
+            empty = false;
+            break;
+          }
+        }
+      }
+      writeClassDefinition(node, buffer, indent, empty);
 
 //      // count lines in class definition the easiest way
 //      total_offset_lines = buffer.substring(start_class_def).toString().split(lineSeparator, -1).length - 1;
@@ -277,12 +294,12 @@ public class ClassWriter {
     DecompilerContext.getLogger().endWriteClass();
   }
 
-  private void writeClassDefinition(ClassNode node, TextBuffer buffer, int indent) {
+  private void writeClassDefinition(ClassNode node, TextBuffer buffer, int indent, boolean empty) {
     String lineSeparator = DecompilerContext.getNewLineSeparator();
 
     if (node.type == ClassNode.CLASS_ANONYMOUS) {
       buffer.append(" {");
-      buffer.append(lineSeparator);
+      if (!empty) buffer.append(lineSeparator);
       return;
     }
 
@@ -384,7 +401,10 @@ public class ClassWriter {
     }
 
     buffer.append('{');
-    buffer.append(lineSeparator);
+    if (!empty) {
+      buffer.append(lineSeparator);
+      buffer.append(lineSeparator); // Spigot
+    }
   }
 
   private void fieldToJava(ClassWrapper wrapper, StructClass cl, StructField fd, TextBuffer buffer, int indent, BytecodeMappingTracer tracer) {
@@ -514,7 +534,7 @@ public class ClassWriter {
             buffer.append(typeName);
             buffer.append(" ");
 
-            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0));
+            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0, typeName, false)); // Spigot
             buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
             firstParameter = false;
@@ -701,6 +721,10 @@ public class ClassWriter {
         int start = isEnum && init && descriptor == null ? 2 : 0;
         int params = descriptor == null ? md.params.length : descriptor.params.size();
         for (int i = start; i < params; i++) {
+          // Spigot Start
+          String typeName;
+          boolean isVarArg;
+          // Spigot end
           if (signFields == null || signFields.get(i) == null) {
             if (!firstParameter) {
               buffer.append(", ");
@@ -715,12 +739,12 @@ public class ClassWriter {
             if (descriptor != null) {
               GenericType parameterType = descriptor.params.get(i);
 
-              boolean isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0);
+              isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0); // Spigot
               if (isVarArg) {
                 parameterType.arraydim--;
               }
 
-              String typeName = GenericMain.getGenericCastTypeName(parameterType);
+              typeName = GenericMain.getGenericCastTypeName(parameterType); // Spigot
               if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName) &&
                   DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
                 typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT);
@@ -735,12 +759,12 @@ public class ClassWriter {
             else {
               VarType parameterType = md.params[i].copy();
 
-              boolean isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0);
+              isVarArg = (i == lastVisibleParameterIndex && mt.hasModifier(CodeConstants.ACC_VARARGS) && parameterType.arraydim > 0); // Spigot
               if (isVarArg) {
                 parameterType.decArrayDim();
               }
 
-              String typeName = ExprProcessor.getCastTypeName(parameterType);
+              typeName = ExprProcessor.getCastTypeName(parameterType); // Spigot
               if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName) &&
                   DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
                 typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT);
@@ -754,7 +778,7 @@ public class ClassWriter {
             }
 
             buffer.append(' ');
-            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0));
+            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPaar(index, 0, typeName, isVarArg)); // Spigot
             buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
             firstParameter = false;
@@ -806,9 +830,10 @@ public class ClassWriter {
 
         //TODO: for now only start line set
         buffer.setCurrentLine(startLine);
-        buffer.append('{').appendLineSeparator();
+        buffer.append('{');
 
         RootStatement root = wrapper.getMethodWrapper(mt.getName(), mt.getDescriptor()).root;
+        boolean empty = false;
 
         if (root != null && !methodWrapper.decompiledWithErrors) { // check for existence
           try {
@@ -816,8 +841,15 @@ public class ClassWriter {
 
             String code = root.toJava(indent + 1, tracer);
 
+            if (Util.rtrim(code).isEmpty()) code = "";
+
             hideMethod = (clinit || dinit || hideConstructor(wrapper, init, throwsExceptions, paramCount)) && code.length() == 0;
 
+            if (!code.isEmpty()) {
+              buffer.appendLineSeparator();
+            } else {
+              empty = true;
+            }
             buffer.append(code);
           }
           catch (Throwable ex) {
@@ -832,7 +864,10 @@ public class ClassWriter {
           buffer.append(lineSeparator);
         }
 
-        buffer.appendIndent(indent).append('}').appendLineSeparator();
+        if (!empty) {
+          buffer.appendIndent(indent);
+        }
+        buffer.append('}').appendLineSeparator();
       }
     }
     finally {
@@ -918,7 +953,7 @@ public class ClassWriter {
   }
 
   private static void appendComment(TextBuffer buffer, String comment, int indent, String lineSeparator) {
-    buffer.appendIndent(indent).append("// $FF: ").append(comment).append(lineSeparator);
+    // buffer.appendIndent(indent).append("// $FF: ").append(comment).append(lineSeparator); // Spigot: Squash comments
   }
 
   private static final String[] ANNOTATION_ATTRIBUTES = {

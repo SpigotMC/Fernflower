@@ -15,6 +15,7 @@
  */
 package org.jetbrains.java.decompiler.main.collectors;
 
+import java.util.Collection;
 import java.util.HashSet;
 
 public class VarNamesCollector {
@@ -24,7 +25,7 @@ public class VarNamesCollector {
   public VarNamesCollector() {
   }
 
-  public VarNamesCollector(HashSet<String> setNames) {
+  public VarNamesCollector(Collection<String> setNames) {
     usedNames.addAll(setNames);
   }
 

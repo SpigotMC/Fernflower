@@ -91,6 +91,6 @@ public interface IFernflowerPreferences {
     put(MAX_PROCESSING_METHOD, "0");
     put(RENAME_ENTITIES, "0");
     put(NEW_LINE_SEPARATOR, (InterpreterUtil.IS_WINDOWS ? "0" : "1"));
-    put(INDENT_STRING, "   ");
+    put(INDENT_STRING, "    ");
   }});
 }

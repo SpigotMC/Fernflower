@@ -16,6 +16,7 @@
 package org.jetbrains.java.decompiler.main.rels;
 
 import org.jetbrains.java.decompiler.code.CodeConstants;
+import org.jetbrains.java.decompiler.code.cfg.BasicBlock;
 import org.jetbrains.java.decompiler.main.ClassesProcessor.ClassNode;
 import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
@@ -25,8 +26,11 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
 import org.jetbrains.java.decompiler.modules.decompiler.sforms.DirectGraph;
 import org.jetbrains.java.decompiler.modules.decompiler.sforms.DirectNode;
+import org.jetbrains.java.decompiler.modules.decompiler.stats.BasicBlockStatement;
+import org.jetbrains.java.decompiler.modules.decompiler.stats.CatchStatement;
 import org.jetbrains.java.decompiler.modules.decompiler.stats.DoStatement;
 import org.jetbrains.java.decompiler.modules.decompiler.stats.RootStatement;
+import org.jetbrains.java.decompiler.modules.decompiler.stats.SequenceStatement;
 import org.jetbrains.java.decompiler.modules.decompiler.stats.Statement;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.VarTypeProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.VarVersionPaar;
@@ -40,6 +44,7 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.*;
 import java.util.Map.Entry;
+import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 
 public class NestedClassProcessor {
 
@@ -56,6 +61,10 @@ public class NestedClassProcessor {
 
     if (node.nested.isEmpty()) {
       return;
+    }
+
+    if (DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM)) {
+      gatherEnumSwitchMaps(node);
     }
 
     if (node.type != ClassNode.CLASS_LAMBDA) {
@@ -102,9 +111,131 @@ public class NestedClassProcessor {
     }
   }
 
+  /**
+   * When Java introduced Enums they aded the ability to use them in Switch statements.
+   * This was done in a purely syntax sugar way using the old switch on int methods.
+   * The compiler creates a synthetic class with a static int array field.
+   * To support enums changing post compile, It initializes this field with a length of the current enum length.
+   * And then for every referenced enum value it adds a mapping in the form of:
+   *   try {
+   *     field[Enum.VALUE.ordinal()] = 1;
+   *   } catch (FieldNotFoundException e) {}
+   *
+   * If a class has multiple switches on multiple enums, the compiler adds the init and try list to the BEGINNING of the static initalizer.
+   * But they add the field to the END of the fields list.
+   */
+  private void gatherEnumSwitchMaps(ClassNode node) {
+    if (node.wrapper == null) {
+      return;
+    }
+    for (ClassNode child : node.nested) {
+      gatherEnumSwitchMaps(child);
+    }
+
+    MethodWrapper clinit = node.wrapper.getMethodWrapper("<clinit>", "()V");
+    if (clinit == null || clinit.root == null || clinit.root.getFirst().type != Statement.TYPE_SEQUENCE) {
+      return;
+    }
+
+    final int STATIC_FINAL_SYNTHETIC = CodeConstants.ACC_STATIC | CodeConstants.ACC_FINAL | CodeConstants.ACC_SYNTHETIC;
+    Set<String> potentialFields = new HashSet<String>();
+    for (StructField fd : node.classStruct.getFields()) {
+      if ((fd.getAccessFlags() & STATIC_FINAL_SYNTHETIC) == STATIC_FINAL_SYNTHETIC && "[I".equals(fd.getDescriptor())) {
+        potentialFields.add(fd.getName());
+      }
+    }
+
+    if (potentialFields.size() == 0) {
+      return;
+    }
+
+    SequenceStatement seq = (SequenceStatement)clinit.root.getFirst();
+    for (int x = 0; x < seq.getStats().size();) {
+      Statement stat = seq.getStats().get(x);
+      if (stat.type != Statement.TYPE_BASICBLOCK || stat.getExprents() == null || stat.getExprents().size() != 1 || stat.getExprents().get(0).type != Exprent.EXPRENT_ASSIGNMENT) {
+        break;
+      }
+      AssignmentExprent ass = (AssignmentExprent)stat.getExprents().get(0);
+      if (ass.getLeft().type != Exprent.EXPRENT_FIELD || ass.getRight().type != Exprent.EXPRENT_NEW) {
+        break;
+      }
+      FieldExprent mapField = (FieldExprent)ass.getLeft();
+      NewExprent _new = ((NewExprent)ass.getRight());
+      if (!mapField.getClassname().equals(node.classStruct.qualifiedName) || !potentialFields.contains(mapField.getName()) ||
+          _new.getNewtype().type != CodeConstants.TYPE_INT || _new.getNewtype().arraydim != 1 ||
+          _new.getLstDims().size() != 1 || _new.getLstDims().get(0).type != Exprent.EXPRENT_FUNCTION) {
+        break;
+      }
+      FunctionExprent func = (FunctionExprent)_new.getLstDims().get(0);
+      if (func.getFunctype() != FunctionExprent.FUNCTION_ARRAYLENGTH || func.getLstOperands().size() != 1 || func.getLstOperands().get(0).type != Exprent.EXPRENT_INVOCATION) {
+        break;
+      }
+      InvocationExprent invoc = (InvocationExprent)func.getLstOperands().get(0);
+      if (!"values".equals(invoc.getName()) || !("()[L" + invoc.getClassname() + ";").equals(invoc.getStringDescriptor())) {
+        break;
+      }
+
+      String fieldName = mapField.getName();
+      String enumName = invoc.getClassname();
+      Map<Integer, String> idToName = new HashMap<Integer, String>();
+
+      boolean replace = false;
+      int y = x;
+      while (++y < seq.getStats().size()) {
+        if (seq.getStats().get(y).type != Statement.TYPE_TRYCATCH) {
+          break;
+        }
+        CatchStatement _try = (CatchStatement)seq.getStats().get(y);
+        Statement first = _try.getFirst();
+        List<Exprent> exprents = first.getExprents();
+        if (_try.getVars().size() != 1 || !"java/lang/NoSuchFieldError".equals(_try.getVars().get(0).getVartype().value) ||
+            first.type != Statement.TYPE_BASICBLOCK || exprents == null || exprents.size() != 1 || exprents.get(0).type != Exprent.EXPRENT_ASSIGNMENT) {
+          break;
+        }
+        ass = (AssignmentExprent)exprents.get(0);
+        if (ass.getRight().type != Exprent.EXPRENT_CONST || (!(((ConstExprent)ass.getRight()).getValue() instanceof Integer)) ||
+            ass.getLeft().type != Exprent.EXPRENT_ARRAY){
+          break;
+        }
+        ArrayExprent array = (ArrayExprent)ass.getLeft();
+        if (array.getArray().type != Exprent.EXPRENT_FIELD || !array.getArray().equals(mapField) || array.getIndex().type != Exprent.EXPRENT_INVOCATION) {
+          break;
+        }
+        invoc = (InvocationExprent)array.getIndex();
+        if (!enumName.equals(invoc.getClassname()) || !"ordinal".equals(invoc.getName()) || !"()I".equals(invoc.getStringDescriptor()) ||
+            invoc.getInstance().type != Exprent.EXPRENT_FIELD) {
+          break;
+        }
+
+        FieldExprent enumField = (FieldExprent)invoc.getInstance();
+        if (!enumName.equals(enumField.getClassname()) || !enumField.isStatic()) {
+          break;
+        }
+
+        idToName.put((Integer)((ConstExprent)ass.getRight()).getValue(), enumField.getName());
+        seq.replaceStatement(_try, getNewEmptyStatement());
+        replace = true;
+      }
+
+      if (replace) {
+        seq.replaceStatement(seq.getStats().get(x), getNewEmptyStatement());
+        node.classStruct.enumSwitchMap.put(fieldName, idToName);
+        node.wrapper.getHiddenMembers().add(InterpreterUtil.makeUniqueKey(fieldName, "[I"));
+      }
+      x = y;
+    }
+  }
+
+  private Statement getNewEmptyStatement() {
+    BasicBlockStatement bstat = new BasicBlockStatement(new BasicBlock(
+      DecompilerContext.getCounterContainer().getCounterAndIncrement(CounterContainer.STATEMENT_COUNTER)));
+    bstat.setExprents(new ArrayList<Exprent>());
+    return bstat;
+  }
+
   private static void setLambdaVars(ClassNode parent, ClassNode child) {
 
-    if (child.lambda_information.is_method_reference) { // method reference, no code and no parameters
+    if (parent.wrapper == null || child.lambda_information.is_method_reference) { // method reference, no code and no parameters
       return;
     }
 
@@ -147,6 +278,7 @@ public class NestedClassProcessor {
 
           if (expr.type == Exprent.EXPRENT_NEW) {
             NewExprent new_expr = (NewExprent)expr;
+            VarNamesCollector enclosingCollector = new VarNamesCollector(encmeth.varproc.getVarNames());
             if (new_expr.isLambda() && lambda_class_type.equals(new_expr.getNewtype())) {
 
               InvocationExprent inv_dynamic = new_expr.getConstructor();
@@ -154,16 +286,16 @@ public class NestedClassProcessor {
               int param_index = is_static_lambda_content ? 0 : 1;
               int varindex = is_static_lambda_content ? 0 : 1;
 
-              for (int i = 0; i < vars_count; ++i) {
+              for (int i = 0; i < md_content.params.length; ++i) {
+                VarVersionPaar varVersion = new VarVersionPaar(varindex, 0, ExprProcessor.getCastTypeName(md_content.params[i].copy()), false);
+                if (i < vars_count) {
+                  Exprent param = inv_dynamic.getLstParameters().get(param_index + i);
 
-                Exprent param = inv_dynamic.getLstParameters().get(param_index + i);
-
-                if (param.type == Exprent.EXPRENT_VAR) {
-                  VarVersionPaar enc_varpaar = new VarVersionPaar((VarExprent)param);
-                  String enc_varname = encmeth.varproc.getVarName(enc_varpaar);
-
-                  //meth.varproc.setVarName(new VarVersionPaar(varindex, 0), enc_varname);
-                  mapNewNames.put(new VarVersionPaar(varindex, 0), enc_varname);
+                  if (param.type == Exprent.EXPRENT_VAR) {
+                    mapNewNames.put(varVersion, encmeth.varproc.getVarName(new VarVersionPaar((VarExprent) param)));
+                  }
+                } else {
+                  mapNewNames.put(varVersion, enclosingCollector.getFreeName(meth.varproc.getVarName(varVersion)));
                 }
 
                 varindex += md_content.params[i].stack_size;
@@ -222,7 +354,7 @@ public class NestedClassProcessor {
         if (!hasEnclosing) {
           if (child.type == ClassNode.CLASS_ANONYMOUS) {
             String message = "Unreferenced anonymous class " + child.classStruct.qualifiedName + "!";
-            DecompilerContext.getLogger().writeMessage(message, IFernflowerLogger.Severity.WARN);
+            DecompilerContext.getLogger().writeMessage(message, IFernflowerLogger.Severity.TRACE);
           }
           else if (child.type == ClassNode.CLASS_LOCAL) {
             String message = "Unreferenced local class " + child.classStruct.qualifiedName + "!";
@@ -276,7 +408,7 @@ public class NestedClassProcessor {
           HashMap<String, List<VarFieldPair>> mask = getMaskLocalVars(nd.wrapper);
           if (mask.isEmpty()) {
             String message = "Nested class " + nd.classStruct.qualifiedName + " has no constructor!";
-            DecompilerContext.getLogger().writeMessage(message, IFernflowerLogger.Severity.WARN);
+            DecompilerContext.getLogger().writeMessage(message, IFernflowerLogger.Severity.TRACE);
           }
           else {
             mapVarMasks.put(nd.classStruct.qualifiedName, mask);

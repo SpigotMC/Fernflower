@@ -139,7 +139,7 @@ public class InitializerProcessor {
             if (fexpr.isStatic() && fexpr.getClassname().equals(cl.qualifiedName) &&
                 cl.hasField(fexpr.getName(), fexpr.getDescriptor().descriptorString)) {
 
-              if (isExprentIndependent(asexpr.getRight(), meth)) {
+              if (true || isExprentIndependent(asexpr.getRight(), meth)) { // Spigot
 
                 String keyField = InterpreterUtil.makeUniqueKey(fexpr.getName(), fexpr.getDescriptor().descriptorString);
                 if (!wrapper.getStaticFieldInitializers().containsKey(keyField)) {

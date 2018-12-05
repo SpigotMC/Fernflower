@@ -119,7 +119,11 @@ public class CatchAllStatement extends Statement {
 
     StringBuilder buf = new StringBuilder();
 
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
+    String defs = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(defs);
+    if (!defs.isEmpty()) {
+      buf.append(new_line_separator);
+    }
 
     boolean labeled = isLabeled();
     if (labeled) {

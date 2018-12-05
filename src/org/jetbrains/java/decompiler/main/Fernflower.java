@@ -85,7 +85,7 @@ public class Fernflower implements IDecompiledData {
       TextBuffer buffer = new TextBuffer(ClassesProcessor.AVERAGE_CLASS_SIZE);
       buffer.append(DecompilerContext.getProperty(IFernflowerPreferences.BANNER).toString());
       classesProcessor.writeClass(cl, buffer);
-      return buffer.toString();
+      return org.spigotmc.fernflower.EclipseFormatter.format(buffer.toString()); // Spigot
     }
     catch (Throwable ex) {
       DecompilerContext.getLogger().writeMessage("Class " + cl.qualifiedName + " couldn't be fully decompiled.", ex);

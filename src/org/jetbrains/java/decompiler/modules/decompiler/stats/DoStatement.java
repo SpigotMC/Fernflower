@@ -98,7 +98,11 @@ public class DoStatement extends Statement {
 
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
+    String content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.isEmpty()) {
+      buf.append(new_line_separator);
+    }
 
     if (isLabeled()) {
       buf.append(indstr).append("label").append(this.id).append(":").append(new_line_separator);

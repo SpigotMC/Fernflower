@@ -20,9 +20,9 @@ import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
 import org.jetbrains.java.decompiler.modules.decompiler.DecHelper;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.IfExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -207,7 +207,40 @@ public class IfStatement extends Statement {
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
     buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+
+    boolean bloodySpecialCases = false;
+    if (first instanceof BasicBlockStatement) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent last = exps.get(exps.size() - 1);
+        if (last instanceof AssignmentExprent) {
+          AssignmentExprent assignmentExprent = (AssignmentExprent) exps.get(exps.size() - 1);
+          bloodySpecialCases = true;
+          if (assignmentExprent.getLeft() instanceof VarExprent) {
+            VarExprent var = (VarExprent) assignmentExprent.getLeft();
+            bloodySpecialCases = !var.isDefinition();
+          }
+        } else if (last instanceof InvocationExprent) {
+          bloodySpecialCases = true;
+        }
+      }
+    }
+
+    if (bloodySpecialCases) {
+      buf.append(Util.rtrim(first.toJava(indent, tracer))).append(new_line_separator);
+    } else {
+      String content = first.toJava(indent, tracer);
+      buf.append(content);
+      if (first instanceof BasicBlockStatement && !content.isEmpty()) {
+        List<Exprent> exps = first.getExprents();
+        if (exps.size() != 0) {
+          Exprent e = exps.get(exps.size() - 1);
+          if (!(e instanceof InvocationExprent || e instanceof FunctionExprent)) {
+            buf.append(new_line_separator);
+          }
+        }
+      }
+    }
 
     if (isLabeled()) {
       buf.append(indstr).append("label").append(this.id).append(":").append(new_line_separator);

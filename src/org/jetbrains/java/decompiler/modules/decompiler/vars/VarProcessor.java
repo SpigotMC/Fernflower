@@ -21,6 +21,7 @@ import org.jetbrains.java.decompiler.modules.decompiler.stats.RootStatement;
 import org.jetbrains.java.decompiler.modules.decompiler.stats.Statement;
 import org.jetbrains.java.decompiler.struct.StructMethod;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
+import org.jetbrains.java.decompiler.util.VarHelper; // Spigot
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -35,6 +36,8 @@ public class VarProcessor {
   private HashMap<VarVersionPaar, String> thisvars = new HashMap<VarVersionPaar, String>();
 
   private HashSet<VarVersionPaar> externvars = new HashSet<VarVersionPaar>();
+
+  private VarHelper helper = new VarHelper(); // Spigot
 
   public void setVarVersions(RootStatement root) {
 
@@ -104,11 +107,21 @@ public class VarProcessor {
   }
 
   public String getVarName(VarVersionPaar varpaar) {
-    return mapVarNames == null ? null : mapVarNames.get(varpaar);
+    // Spigot Start
+    String name = mapVarNames.get(varpaar);
+    if (name != null) {
+      mapVarNames.put(varpaar, name = helper.help(name, varpaar.type, varpaar.varargs));
+    }
+    return name;
+    // Spigot End
   }
 
   public void setVarName(VarVersionPaar varpaar, String name) {
     mapVarNames.put(varpaar, name);
+  }
+
+  public Collection<String> getVarNames() {
+    return mapVarNames != null ? mapVarNames.values() : Collections.EMPTY_SET;
   }
 
   public int getVarFinal(VarVersionPaar varpaar) {

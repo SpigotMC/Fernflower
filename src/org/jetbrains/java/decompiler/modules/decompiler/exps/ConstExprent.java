@@ -37,7 +37,7 @@ public class ConstExprent extends Exprent {
     escapes.put(new Integer(0xA), "\\n"); /* \u000a: linefeed LF */
     escapes.put(new Integer(0xC), "\\f"); /* \u000c: form feed FF */
     escapes.put(new Integer(0xD), "\\r"); /* \u000d: carriage return CR */
-    escapes.put(new Integer(0x22), "\\\""); /* \u0022: double quote " */
+    //escapes.put(new Integer(0x22), "\\\""); /* \u0022: double quote " */
     escapes.put(new Integer(0x27), "\\\'"); /* \u0027: single quote ' */
     escapes.put(new Integer(0x5C), "\\\\"); /* \u005c: backslash \ */
   }
@@ -298,9 +298,9 @@ public class ConstExprent extends Exprent {
         case 0x22: //"\\\\\""); // u0022: double quote "
           buffer.append("\\\"");
           break;
-        case 0x27: //"\\\\'");  // u0027: single quote '
-          buffer.append("\\\'");
-          break;
+        //case 0x27: //"\\\\'");  // u0027: single quote '
+        //  buffer.append("\\\'");
+        //  break;
         default:
           if (c >= 32 && c < 127 || !ascii && InterpreterUtil.isPrintableUnicode(c)) {
             buffer.append(c);
@@ -387,6 +387,27 @@ public class ConstExprent extends Exprent {
   public void setConsttype(VarType consttype) {
     this.consttype = consttype;
   }
+
+  public void adjustConstType(VarType expectedType) {
+    // BYTECHAR and SHORTCHAR => CHAR in the CHAR context
+    if ((expectedType.equals(VarType.VARTYPE_CHAR) || expectedType.equals(VarType.VARTYPE_CHARACTER)) &&
+            (consttype.equals(VarType.VARTYPE_BYTECHAR) || consttype.equals(VarType.VARTYPE_SHORTCHAR))) {
+      int intValue = getIntValue();
+      if (isPrintableAscii(intValue) || escapes.containsKey(intValue)) {
+        setConsttype(VarType.VARTYPE_CHAR);
+      }
+    }
+    // BYTE, BYTECHAR, SHORTCHAR, SHORT, CHAR => INT in the INT context
+    else if ((expectedType.equals(VarType.VARTYPE_INT) || expectedType.equals(VarType.VARTYPE_INTEGER)) &&
+            consttype.type_family == CodeConstants.TYPE_FAMILY_INTEGER) {
+      setConsttype(VarType.VARTYPE_INT);
+    }
+  }
+
+  private static boolean isPrintableAscii(int c) {
+    return c >= 32 && c < 127;
+  }
+
 
   public Object getValue() {
     return value;

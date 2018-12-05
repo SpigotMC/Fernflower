@@ -23,11 +23,11 @@ import org.jetbrains.java.decompiler.main.collectors.CounterContainer;
 import org.jetbrains.java.decompiler.modules.decompiler.DecHelper;
 import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.ConstExprent;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
-import org.jetbrains.java.decompiler.modules.decompiler.exps.SwitchExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
+import org.jetbrains.java.decompiler.struct.StructClass;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.*;
 
@@ -114,15 +114,36 @@ public class SwitchStatement extends Statement {
     String new_line_separator = DecompilerContext.getNewLineSeparator();
 
     StringBuilder buf = new StringBuilder();
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+    String content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.isEmpty()) {
+      buf.append(new_line_separator);
+    }
+    content = first.toJava(indent, tracer);
+    buf.append(content);
+    if (first instanceof BasicBlockStatement && !content.isEmpty()) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent e = exps.get(exps.size() - 1);
+        if (!(e instanceof InvocationExprent
+                || e instanceof FunctionExprent
+                || (e instanceof AssignmentExprent && !(((AssignmentExprent) e).getLeft() instanceof VarExprent && ((VarExprent) ((AssignmentExprent) e).getLeft()).isDefinition())))) {
+          buf.append(new_line_separator);
+        }
+      }
+    }
 
     if (isLabeled()) {
       buf.append(indstr).append("label").append(this.id).append(":").append(new_line_separator);
       tracer.incrementCurrentSourceLine();
     }
 
-    buf.append(indstr).append(headexprent.get(0).toJava(indent, tracer)).append(" {").append(new_line_separator);
+    // Doesn't seem to be a better place to put it so enhance things here
+    Map<Integer, String> remaps = enhanceHead(headexprent.get(0), buf, indent, tracer);
+
+    if (remaps == null) {
+      buf.append(indstr).append(headexprent.get(0).toJava(indent, tracer)).append(" {").append(new_line_separator);
+    }
     tracer.incrementCurrentSourceLine();
 
     VarType switch_type = headexprent.get(0).getExprType();
@@ -142,18 +163,67 @@ public class SwitchStatement extends Statement {
           ConstExprent value = (ConstExprent)values.get(j).copy();
           value.setConsttype(switch_type);
 
-          buf.append(indstr).append("case ").append(value.toJava(indent, tracer)).append(":").append(new_line_separator);
+          buf.append(indstr).append("case ");
+          if (remaps == null) {
+            buf.append(value.toJava(indent, tracer));
+          } else {
+            buf.append(remaps.get(value.getValue()));
+          }
+          buf.append(":").append(new_line_separator);
           tracer.incrementCurrentSourceLine();
         }
       }
 
-      buf.append(ExprProcessor.jmpWrapper(stat, indent + 1, false, tracer));
+      String c = Util.rtrim(ExprProcessor.jmpWrapper(stat, indent + 1, false, tracer));
+      if (!c.isEmpty()) {
+        buf.append(c);
+        // buf.append(new_line_separator);
+      }
+      if (i != caseStatements.size() - 1) buf.append(new_line_separator);
     }
 
     buf.append(indstr).append("}").append(new_line_separator);
     tracer.incrementCurrentSourceLine();
 
     return buf.toString();
+  }
+
+  private Map<Integer, String> enhanceHead(Exprent exprent, StringBuilder buf, int indent, BytecodeMappingTracer tracer) {
+    if (exprent.type != Exprent.EXPRENT_SWITCH) return null;
+
+    SwitchExprent swtch = (SwitchExprent)exprent;
+    if (swtch.getValue().type != Exprent.EXPRENT_ARRAY) return null;
+
+    ArrayExprent array = (ArrayExprent)swtch.getValue();
+    if (array.getArray().type != Exprent.EXPRENT_FIELD || array.getIndex().type != Exprent.EXPRENT_INVOCATION) return null;
+
+    FieldExprent field = (FieldExprent)array.getArray();
+    InvocationExprent invoc = (InvocationExprent)array.getIndex();
+    StructClass cls = DecompilerContext.getStructContext().getClass(field.getClassname());
+    if (cls == null || !field.isStatic() || !"ordinal".equals(invoc.getName()) || !"()I".equals(invoc.getStringDescriptor())) return null;
+
+    Map<Integer, String> ret = cls.enumSwitchMap.get(field.getName());
+    if (ret == null) return null;
+
+    for (List<ConstExprent> lst : getCaseValues()) {
+      if (lst != null) {
+        for (ConstExprent cst : lst) {
+          if (cst != null && (!(cst.getValue() instanceof Integer) || !ret.containsKey(cst.getValue()))) {
+            return null;
+          }
+        }
+      }
+    }
+
+    tracer.addMapping(swtch.bytecode);
+    tracer.addMapping(field.bytecode);
+    tracer.addMapping(invoc.bytecode);
+
+    String indstr = InterpreterUtil.getIndentString(indent);
+    String new_line_separator = DecompilerContext.getNewLineSeparator();
+
+    buf.append(indstr).append("switch (").append((invoc.getInstance().toJava(indent, tracer))).append(") {").append(new_line_separator);
+    return ret;
   }
 
   public void initExprents() {
