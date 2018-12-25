@@ -73,8 +73,11 @@ public class VarDefinitionHelper {
       StructClass current_class = (StructClass)DecompilerContext.getProperty(DecompilerContext.CURRENT_CLASS);
 
       varproc.getThisVars().put(new VarVersionPair(0, 0), current_class.qualifiedName);
-      varproc.setVarName(new VarVersionPair(0, 0), "this");
-      vc.addName("this");
+      // Spigot start
+      VarProcessor.MutableString thisName = new VarProcessor.MutableString("this");
+      varproc.setVarName(new VarVersionPair(0, 0), thisName);
+      vc.addName(thisName);
+      // Spigot end
     }
 
     // catch variables are implicitly defined

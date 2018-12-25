@@ -27,6 +27,7 @@ import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.TextUtil;
 
 import java.util.*;
+import org.jetbrains.java.decompiler.util.Util;
 
 public class ExprProcessor implements CodeConstants {
   public static final String UNDEFINED_TYPE_STRING = "<undefinedtype>";
@@ -743,7 +744,17 @@ public class ExprProcessor implements CodeConstants {
   }
 
   public static TextBuffer jmpWrapper(Statement stat, int indent, boolean semicolon, BytecodeMappingTracer tracer) {
-    TextBuffer buf = stat.toJava(indent, tracer);
+    String new_line_separator = DecompilerContext.getNewLineSeparator();
+
+    TextBuffer buf = new TextBuffer();
+    TextBuffer content = stat.toJava(indent, tracer);
+    if (!(stat instanceof IfStatement) && !(stat instanceof DoStatement) && !(stat instanceof SequenceStatement)) {
+      content = new TextBuffer(Util.rtrim(content.toString()));
+    }
+    buf.append(content);
+    if (!(stat instanceof IfStatement) && !(stat instanceof DoStatement) && !(stat instanceof SequenceStatement) && buf.length() != 0) {
+      buf.append(new_line_separator);
+    }
 
     List<StatEdge> lstSuccs = stat.getSuccessorEdges(Statement.STATEDGE_DIRECT_ALL);
     if (lstSuccs.size() == 1) {
@@ -797,6 +808,10 @@ public class ExprProcessor implements CodeConstants {
     }
 
     TextBuffer buf = new TextBuffer();
+    // Spigot Start
+    boolean inVar = false;
+    boolean bloodySpecialCaseForNewAssignments = false;
+    // Spigot End
 
     for (Exprent expr : lst) {
       if (buf.length() > 0 && expr.type == Exprent.EXPRENT_VAR && ((VarExprent)expr).isClassDef()) {
@@ -808,6 +823,30 @@ public class ExprProcessor implements CodeConstants {
       TextBuffer content = expr.toJava(indent, tracer);
 
       if (content.length() > 0) {
+        if (expr instanceof VarExprent || expr instanceof AssignmentExprent) {
+          inVar = true;
+          boolean wasASpecialLittleFlower = bloodySpecialCaseForNewAssignments;
+          bloodySpecialCaseForNewAssignments = expr instanceof VarExprent;
+          if (expr instanceof AssignmentExprent && ((AssignmentExprent) expr).getLeft() instanceof VarExprent) {
+            AssignmentExprent assignmentExprent = (AssignmentExprent) expr;
+            VarExprent var = (VarExprent) assignmentExprent.getLeft();
+            bloodySpecialCaseForNewAssignments = var.isDefinition();
+          }
+          if (wasASpecialLittleFlower && !bloodySpecialCaseForNewAssignments) {
+            buf.appendLineSeparator();
+          }
+        } else if (inVar) {
+          inVar = false;
+          if (!(expr instanceof InvocationExprent
+                  || expr instanceof ExitExprent
+                  || expr instanceof FunctionExprent
+              )
+                  || bloodySpecialCaseForNewAssignments) {
+            bloodySpecialCaseForNewAssignments = false;
+            buf.appendLineSeparator();
+          }
+        }
+
         if (expr.type != Exprent.EXPRENT_VAR || !((VarExprent)expr).isClassDef()) {
           buf.appendIndent(indent);
         }
@@ -880,7 +919,7 @@ public class ExprProcessor implements CodeConstants {
     VarType rightType = exprent.getExprType();
 
     boolean cast =
-      castAlways ||
+      (castAlways && !leftType.equals(rightType)) || // Spigot
       (!leftType.isSuperset(rightType) && (rightType.equals(VarType.VARTYPE_OBJECT) || leftType.type != CodeConstants.TYPE_OBJECT)) ||
       (castNull && rightType.type == CodeConstants.TYPE_NULL && !UNDEFINED_TYPE_STRING.equals(getTypeName(leftType))) ||
       (castNarrowing && isIntConstant(exprent) && isNarrowedIntType(leftType));

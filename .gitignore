@@ -1,3 +1,11 @@
 /.idea/
 /.gradle/
 /build/
+
+/dist/
+/nbproject/
+/target
+
+*.iml
+nbactions.xml
+nb-configuration.xml
