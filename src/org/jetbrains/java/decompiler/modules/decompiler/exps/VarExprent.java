@@ -94,15 +94,16 @@ public class VarExprent extends Exprent {
     else {
       VarVersionPair varVersion = getVarVersionPair();
       String name = null;
+      String typeName = getDefinitionType(); // Spigot
       if (processor != null) {
-        name = processor.getVarName(varVersion);
+        name = processor.getSpigotVarName(varVersion, typeName, false); // Spigot
       }
 
       if (definition) {
         if (processor != null && processor.getVarFinal(varVersion) == VarTypeProcessor.VAR_EXPLICIT_FINAL) {
           buffer.append("final ");
         }
-        appendDefinitionType(buffer);
+        buffer.append(typeName); // Spigot
         buffer.append(" ");
       }
 
@@ -130,8 +131,8 @@ public class VarExprent extends Exprent {
     return null;
   }
 
-  private void appendDefinitionType(TextBuffer buffer) {
-    if (DecompilerContext.getOption(IFernflowerPreferences.USE_DEBUG_VAR_NAMES)) {
+  private String getDefinitionType() { // Spigot
+    if (true || DecompilerContext.getOption(IFernflowerPreferences.USE_DEBUG_VAR_NAMES)) { // Spigot
       MethodWrapper method = (MethodWrapper)DecompilerContext.getProperty(DecompilerContext.CURRENT_METHOD_WRAPPER);
       if (method != null) {
         Integer originalIndex = null;
@@ -148,8 +149,7 @@ public class VarExprent extends Exprent {
               if (signature != null) {
                 GenericFieldDescriptor descriptor = GenericMain.parseFieldSignature(signature);
                 if (descriptor != null) {
-                  buffer.append(GenericMain.getGenericCastTypeName(descriptor.type));
-                  return;
+                  return GenericMain.getGenericCastTypeName(descriptor.type); // Spigot
                 }
               }
             }
@@ -157,18 +157,17 @@ public class VarExprent extends Exprent {
 
           // then try from descriptor
           StructLocalVariableTableAttribute attr = method.methodStruct.getLocalVariableAttr();
-          if (attr != null) {
+          if (false && attr != null) { // Spigot
             String descriptor = attr.getDescriptor(originalIndex, visibleOffset);
             if (descriptor != null) {
-              buffer.append(ExprProcessor.getCastTypeName(new VarType(descriptor)));
-              return;
+              return ExprProcessor.getCastTypeName(new VarType(descriptor)); // Spigot
             }
           }
         }
       }
     }
 
-    buffer.append(ExprProcessor.getCastTypeName(getVarType()));
+    return ExprProcessor.getCastTypeName(getVarType()); // Spigot
   }
 
   @Override

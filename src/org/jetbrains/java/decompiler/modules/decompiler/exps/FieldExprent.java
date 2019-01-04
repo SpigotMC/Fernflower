@@ -54,7 +54,7 @@ public class FieldExprent extends Exprent {
 
   @Override
   public int getExprentUse() {
-    return 0; // multiple references to a field considered dangerous in a multithreaded environment, thus no Exprent.MULTIPLE_USES set here
+    return instance == null ? 0 : instance.getExprentUse(); // Spigot
   }
 
   @Override
@@ -89,7 +89,7 @@ public class FieldExprent extends Exprent {
 
     if (isStatic) {
       ClassNode node = (ClassNode)DecompilerContext.getProperty(DecompilerContext.CURRENT_CLASS_NODE);
-      if (node == null || !classname.equals(node.classStruct.qualifiedName) || isAmbiguous()) {
+      if (true || node == null || !classname.equals(node.classStruct.qualifiedName) || isAmbiguous()) { // Spigot
         buf.append(DecompilerContext.getImportCollector().getShortNameInClassContext(ExprProcessor.buildJavaClassName(classname)));
         buf.append(".");
       }
