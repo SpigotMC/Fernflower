@@ -8,6 +8,7 @@ import org.jetbrains.java.decompiler.struct.StructMethod;
 import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.TextUtil;
+import org.jetbrains.java.decompiler.util.VarHelper; // Spigot
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -16,7 +17,7 @@ public class VarProcessor {
   private final VarNamesCollector varNamesCollector = new VarNamesCollector();
   private final StructMethod method;
   private final MethodDescriptor methodDescriptor;
-  private Map<VarVersionPair, String> mapVarNames = new HashMap<>();
+  private Map<VarVersionPair, MutableString> mapVarNames = new HashMap<>();
   private VarVersionsProcessor varVersions;
   private final Map<VarVersionPair, String> thisVars = new HashMap<>();
   private final Set<VarVersionPair> externalVars = new HashSet<>();
@@ -25,6 +26,8 @@ public class VarProcessor {
     method = mt;
     methodDescriptor = md;
   }
+
+  public VarHelper helper = new VarHelper(); // Spigot
 
   public void setVarVersions(RootStatement root) {
     VarVersionsProcessor oldProcessor = varVersions;
@@ -47,16 +50,16 @@ public class VarProcessor {
     List<VarVersionPair> listVars = new ArrayList<>(mapVarNames.keySet());
     listVars.sort(Comparator.comparingInt(o -> o.var));
 
-    Map<String, Integer> mapNames = new HashMap<>();
+    Map<MutableString, Integer> mapNames = new HashMap<>();
 
     for (VarVersionPair pair : listVars) {
-      String name = mapVarNames.get(pair);
+      MutableString name = mapVarNames.get(pair);
 
       Integer index = mapOriginalVarIndices.get(pair.var);
       if (index != null) {
         String debugName = mapDebugVarNames.get(index);
         if (debugName != null && TextUtil.isValidIdentifier(debugName, method.getClassStruct().getBytecodeVersion())) {
-          name = debugName;
+          name.string = debugName;
         }
       }
 
@@ -64,7 +67,7 @@ public class VarProcessor {
       mapNames.put(name, counter == null ? counter = 0 : ++counter);
 
       if (counter > 0) {
-        name += String.valueOf(counter);
+        name.string += String.valueOf(counter);
       }
 
       mapVarNames.put(pair, name);
@@ -80,8 +83,8 @@ public class VarProcessor {
   }
 
   public void refreshVarNames(VarNamesCollector vc) {
-    Map<VarVersionPair, String> tempVarNames = new HashMap<>(mapVarNames);
-    for (Entry<VarVersionPair, String> ent : tempVarNames.entrySet()) {
+    Map<VarVersionPair, MutableString> tempVarNames = new HashMap<>(mapVarNames);
+    for (Entry<VarVersionPair, MutableString> ent : tempVarNames.entrySet()) {
       mapVarNames.put(ent.getKey(), vc.getFreeName(ent.getValue()));
     }
   }
@@ -98,15 +101,27 @@ public class VarProcessor {
     varVersions.setVarType(pair, type);
   }
 
-  public String getVarName(VarVersionPair pair) {
+  public MutableString getVarName(VarVersionPair pair) {
     return mapVarNames == null ? null : mapVarNames.get(pair);
   }
 
-  public void setVarName(VarVersionPair pair, String name) {
+  public String getSpigotVarName(VarVersionPair pair, String type, boolean varargs) {
+    // Spigot Start
+    MutableString name = mapVarNames.get(pair);
+    if (name != null) {
+      name.string = helper.help(name.string, type, varargs);
+
+      return name.string;
+    }
+    return null;
+    // Spigot End
+  }
+
+  public void setVarName(VarVersionPair pair, MutableString name) {
     mapVarNames.put(pair, name);
   }
 
-  public Collection<String> getVarNames() {
+  public Collection<MutableString> getVarNames() {
     return mapVarNames != null ? mapVarNames.values() : Collections.emptySet();
   }
 
@@ -124,5 +139,31 @@ public class VarProcessor {
 
   public Set<VarVersionPair> getExternalVars() {
     return externalVars;
+  }
+
+  public static class MutableString {
+
+    public String string;
+
+    public MutableString(String string) {
+      this.string = string;
+    }
+
+    @Override
+    public int hashCode() {
+      int hash = 5;
+      hash = 71 * hash + Objects.hashCode(this.string);
+      return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return (string == null) ? obj == null : string.equals(obj);
+    }
+
+    @Override
+    public String toString() {
+      return string == null ? "null" : string.toString();
+    }
   }
 }

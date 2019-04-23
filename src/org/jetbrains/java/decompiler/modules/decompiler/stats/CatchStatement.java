@@ -134,7 +134,11 @@ public class CatchStatement extends Statement {
   public TextBuffer toJava(int indent, BytecodeMappingTracer tracer) {
     TextBuffer buf = new TextBuffer();
 
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
+    TextBuffer content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.containsOnlyWhitespaces()) {
+      buf.appendLineSeparator();
+    }
 
     if (isLabeled()) {
       buf.appendIndent(indent).append("label").append(this.id.toString()).append(":").appendLineSeparator();
@@ -170,7 +174,7 @@ public class CatchStatement extends Statement {
       buf.append(vars.get(i - 1).toJava(indent, tracer));
       buf.append(") {").appendLineSeparator();
       tracer.incrementCurrentSourceLine();
-      buf.append(ExprProcessor.jmpWrapper(stat, indent + 1, false, tracer)).appendIndent(indent)
+      buf.append(ExprProcessor.jmpWrapper(stat, indent + 1, true, tracer)).appendIndent(indent)
         .append("}");
     }
     buf.appendLineSeparator();

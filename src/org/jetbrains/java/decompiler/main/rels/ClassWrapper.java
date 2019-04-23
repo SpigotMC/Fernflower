@@ -136,7 +136,7 @@ public class ClassWrapper {
       if (!isError) {
         // rename vars so that no one has the same name as a field
         VarNamesCollector namesCollector = new VarNamesCollector();
-        classStruct.getFields().forEach(f -> namesCollector.addName(f.getName()));
+        classStruct.getFields().forEach(f -> namesCollector.addName(new VarProcessor.MutableString(f.getName())));
         varProc.refreshVarNames(namesCollector);
 
         // if debug information present and should be used
@@ -156,7 +156,7 @@ public class ClassWrapper {
                   VarExprent varExprent = (VarExprent)e;
                   String name = varExprent.getDebugName(mt);
                   if (name != null) {
-                    varProc.setVarName(varExprent.getVarVersionPair(), name);
+                    varProc.setVarName(varExprent.getVarVersionPair(), new VarProcessor.MutableString(name)); // Spigot
                   }
                 });
               return 0;
