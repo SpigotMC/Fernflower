@@ -19,11 +19,15 @@ public class EclipseFormatter {
     options.tab_char = DefaultCodeFormatterOptions.SPACE;
     options.page_width = 0;
 
+    options.indent_switchstatements_compare_to_switch = true;
+
     options.insert_new_line_after_label = true;
     options.insert_new_line_in_empty_method_body = false;
     options.insert_new_line_in_empty_type_declaration = false;
 
-    options.insert_space_before_closing_brace_in_array_initializer = false; // Compatability
+    options.insert_space_after_opening_brace_in_array_initializer = false;
+    options.insert_space_before_opening_brace_in_array_initializer = false;
+    options.insert_space_before_closing_brace_in_array_initializer = false;
     // options.blank_lines_before_first_class_body_declaration = 1; // Needed later
 
     formatter = new DefaultCodeFormatter(options);
