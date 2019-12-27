@@ -44,12 +44,16 @@ public class FastExtendedPostdominanceHelper {
 
     removeErroneousNodes();
 
+    // Spigot start - just makes the decompile worse (see CommandDispatcher)
+    /*
     DominatorTreeExceptionFilter filter = new DominatorTreeExceptionFilter(statement);
     filter.initialize();
 
     filterOnExceptionRanges(filter);
 
     filterOnDominance(filter);
+    */
+    // Spigot end
 
     Set<Entry<Integer, FastFixedSet<Integer>>> entries = mapExtPostdominators.entrySet();
     HashMap<Integer, Set<Integer>> res = new HashMap<>(entries.size());
