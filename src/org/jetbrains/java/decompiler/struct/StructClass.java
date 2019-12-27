@@ -37,6 +37,7 @@ public class StructClass extends StructMember {
   public final PrimitiveConstant superClass;
 
   private final boolean own;
+  public final boolean decompile; // Spigot
   private final LazyLoader loader;
   private final int minorVersion;
   private final int majorVersion;
@@ -52,7 +53,10 @@ public class StructClass extends StructMember {
   }
 
   public StructClass(DataInputFullStream in, boolean own, LazyLoader loader) throws IOException {
-    this.own = own;
+    // Spigot start
+    this.own = true;
+    this.decompile = own;
+    // Spigot end
     this.loader = loader;
 
     in.discard(4);
