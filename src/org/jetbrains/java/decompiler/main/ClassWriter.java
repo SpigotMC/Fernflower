@@ -1,6 +1,7 @@
 // Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package org.jetbrains.java.decompiler.main;
 
+import java.lang.reflect.Modifier;
 import org.jetbrains.java.decompiler.code.CodeConstants;
 import org.jetbrains.java.decompiler.main.ClassesProcessor.ClassNode;
 import org.jetbrains.java.decompiler.main.collectors.BytecodeMappingTracer;
@@ -23,6 +24,8 @@ import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.struct.gen.generics.*;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
 import org.jetbrains.java.decompiler.util.TextBuffer;
+import org.jetbrains.java.decompiler.util.Util;
+import org.jetbrains.java.decompiler.util.VarHelper;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -92,6 +95,12 @@ public class ClassWriter {
         MethodWrapper methodWrapper = wrapper.getMethodWrapper(mt.getName(), mt.getDescriptor());
         MethodDescriptor md_content = MethodDescriptor.parseDescriptor(node.lambdaInformation.content_method_descriptor);
         MethodDescriptor md_lambda = MethodDescriptor.parseDescriptor(node.lambdaInformation.method_descriptor);
+        // Spigot start
+        MethodWrapper outerWrapper = (MethodWrapper) DecompilerContext.getProperty(DecompilerContext.CURRENT_METHOD_WRAPPER);
+        if (outerWrapper != null) {
+          methodWrapper.varproc.helper = new VarHelper(outerWrapper.varproc.helper); // Spigot
+        }
+        // Spigot end
 
         if (!lambdaToAnonymous) {
           buffer.append('(');
@@ -106,7 +115,13 @@ public class ClassWriter {
                 buffer.append(", ");
               }
 
-              String parameterName = methodWrapper.varproc.getVarName(new VarVersionPair(index, 0));
+              String typeName = ExprProcessor.getCastTypeName(md_content.params[i], false); // Spigot
+              if (ExprProcessor.UNDEFINED_TYPE_STRING.equals(typeName)
+                      && DecompilerContext.getOption(IFernflowerPreferences.UNDEFINED_PARAM_TYPE_OBJECT)) {
+                typeName = ExprProcessor.getCastTypeName(VarType.VARTYPE_OBJECT, false); // Spigot
+              }
+
+              String parameterName = methodWrapper.varproc.getSpigotVarName(new VarVersionPair(index, 0), typeName, false); // Spigot
               buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
               firstParameter = false;
@@ -153,7 +168,17 @@ public class ClassWriter {
 
       // write class definition
       int start_class_def = buffer.length();
-      writeClassDefinition(node, buffer, indent);
+      boolean empty = cl.getFields().isEmpty() && cl.getMethods().isEmpty();
+      if (cl.hasModifier(CodeConstants.ACC_ENUM)) {
+        empty = true;
+        for (StructField fd : cl.getFields()) {
+          if (fd.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM)) {
+            empty = false;
+            break;
+          }
+        }
+      }
+      writeClassDefinition(node, buffer, indent, empty);
 
       boolean hasContent = false;
       boolean enumFields = false;
@@ -279,7 +304,7 @@ public class ClassWriter {
   }
 
   public static void packageInfoToJava(StructClass cl, TextBuffer buffer) {
-    appendAnnotations(buffer, 0, cl, -1);
+    appendAnnotations(buffer, 0, cl, cl, -1);
 
     int index = cl.qualifiedName.lastIndexOf('/');
     String packageName = cl.qualifiedName.substring(0, index).replace('/', '.');
@@ -287,7 +312,7 @@ public class ClassWriter {
   }
 
   public static void moduleInfoToJava(StructClass cl, TextBuffer buffer) {
-    appendAnnotations(buffer, 0, cl, -1);
+    appendAnnotations(buffer, 0, cl, cl, -1);
 
     StructModuleAttribute moduleAttribute = cl.getAttribute(StructGeneralAttribute.ATTRIBUTE_MODULE);
 
@@ -380,9 +405,12 @@ public class ClassWriter {
     DecompilerContext.getBytecodeSourceMapper().addTracer(cls.qualifiedName, key, tracer);
   }
 
-  private void writeClassDefinition(ClassNode node, TextBuffer buffer, int indent) {
+  private void writeClassDefinition(ClassNode node, TextBuffer buffer, int indent, boolean empty) {
+    String lineSeparator = DecompilerContext.getNewLineSeparator();
+
     if (node.type == ClassNode.CLASS_ANONYMOUS) {
-      buffer.append(" {").appendLineSeparator();
+      buffer.append(" {");
+      if (!empty) buffer.append(lineSeparator);
       return;
     }
 
@@ -409,7 +437,7 @@ public class ClassWriter {
       appendComment(buffer, "synthetic class", indent);
     }
 
-    appendAnnotations(buffer, indent, cl, -1);
+    appendAnnotations(buffer, indent, cl, cl, -1);
 
     buffer.appendIndent(indent);
 
@@ -458,7 +486,7 @@ public class ClassWriter {
           buffer.append(", ");
         }
         boolean varArgComponent = i == components.size() - 1 && isVarArgRecord(cl);
-        recordComponentToJava(cd, buffer, varArgComponent);
+        recordComponentToJava(cl, cd, buffer, varArgComponent);
       }
       buffer.append(')');
     }
@@ -498,7 +526,11 @@ public class ClassWriter {
       }
     }
 
-    buffer.append('{').appendLineSeparator();
+    buffer.append('{');
+    if (!empty) {
+      buffer.append(lineSeparator);
+      buffer.append(lineSeparator); // Spigot
+    }
   }
 
   private static boolean isVarArgRecord(StructClass cl) {
@@ -527,7 +559,7 @@ public class ClassWriter {
       appendComment(buffer, "synthetic field", indent);
     }
 
-    appendAnnotations(buffer, indent, fd, TypeAnnotation.FIELD);
+    appendAnnotations(buffer, indent, cl, fd, TypeAnnotation.FIELD);
 
     buffer.appendIndent(indent);
 
@@ -592,8 +624,8 @@ public class ClassWriter {
     }
   }
 
-  private static void recordComponentToJava(StructRecordComponent cd, TextBuffer buffer, boolean varArgComponent) {
-    appendAnnotations(buffer, -1, cd, TypeAnnotation.FIELD);
+  private static void recordComponentToJava(StructClass cl, StructRecordComponent cd, TextBuffer buffer, boolean varArgComponent) {
+    appendAnnotations(buffer, -1, cl, cd, TypeAnnotation.FIELD);
 
     Map.Entry<VarType, GenericFieldDescriptor> fieldTypeData = getFieldTypeData(cd);
     VarType fieldType = fieldTypeData.getKey();
@@ -654,7 +686,7 @@ public class ClassWriter {
             buffer.append(typeName);
             buffer.append(" ");
 
-            String parameterName = methodWrapper.varproc.getVarName(new VarVersionPair(index, 0));
+            String parameterName = methodWrapper.varproc.getSpigotVarName(new VarVersionPair(index, 0), typeName, false); // Spigot
             buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
             firstParameter = false;
@@ -736,6 +768,11 @@ public class ClassWriter {
     DecompilerContext.setProperty(DecompilerContext.CURRENT_METHOD_WRAPPER, methodWrapper);
 
     try {
+      // Spigot start
+      if (outerWrapper != null) {
+        methodWrapper.varproc.helper = new VarHelper(outerWrapper.varproc.helper);
+      }
+      // Spigot end
       boolean isInterface = cl.hasModifier(CodeConstants.ACC_INTERFACE);
       boolean isAnnotation = cl.hasModifier(CodeConstants.ACC_ANNOTATION);
       boolean isEnum = cl.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM);
@@ -770,7 +807,7 @@ public class ClassWriter {
         appendComment(buffer, "bridge method", indent);
       }
 
-      appendAnnotations(buffer, indent, mt, TypeAnnotation.METHOD_RETURN_TYPE);
+      appendAnnotations(buffer, indent, cl, mt, TypeAnnotation.METHOD_RETURN_TYPE);
 
       buffer.appendIndent(indent);
 
@@ -914,7 +951,7 @@ public class ClassWriter {
               parameterName = methodParameters.get(i).myName;
             }
             else {
-              parameterName = methodWrapper.varproc.getVarName(new VarVersionPair(index, 0));
+              parameterName = methodWrapper.varproc.getSpigotVarName(new VarVersionPair(index, 0), typeName, isVarArg); // Spigot
             }
             buffer.append(parameterName == null ? "param" + index : parameterName); // null iff decompiled with errors
 
@@ -971,16 +1008,23 @@ public class ClassWriter {
         tracer.incrementCurrentSourceLine();
 
         RootStatement root = wrapper.getMethodWrapper(mt.getName(), mt.getDescriptor()).root;
+        boolean empty = false;
 
         if (root != null && !methodWrapper.decompiledWithErrors) { // check for existence
           try {
             // to restore in case of an exception
             BytecodeMappingTracer codeTracer = new BytecodeMappingTracer(tracer.getCurrentSourceLine());
             TextBuffer code = root.toJava(indent + 1, codeTracer);
+            if (Util.rtrim(code.toString()).isEmpty()) code = new TextBuffer();
 
             hideMethod = code.length() == 0 && (clInit || dInit || hideConstructor(node, init, throwsExceptions, paramCount, flags)) ||
                          isSyntheticRecordMethod(cl, mt, code);
 
+            if (!code.containsOnlyWhitespaces()) {
+              // buffer.appendLineSeparator();
+            } else {
+              empty = true;
+            }
             buffer.append(code);
 
             tracer.setCurrentSourceLine(codeTracer.getCurrentSourceLine());
@@ -1002,7 +1046,10 @@ public class ClassWriter {
         else if (root != null) {
           tracer.addMapping(root.getDummyExit().bytecode);
         }
-        buffer.appendIndent(indent).append('}').appendLineSeparator();
+        if (!empty) {
+          buffer.appendIndent(indent);
+        }
+        buffer.append('}').appendLineSeparator();
       }
 
       tracer.incrementCurrentSourceLine();
@@ -1115,7 +1162,7 @@ public class ClassWriter {
   }
 
   private static void appendComment(TextBuffer buffer, String comment, int indent) {
-    buffer.appendIndent(indent).append("// $FF: ").append(comment).appendLineSeparator();
+    // buffer.appendIndent(indent).append("// $FF: ").append(comment).appendLineSeparator(); // Spigot: Squash comments
   }
 
   private static final StructGeneralAttribute.Key<?>[] ANNOTATION_ATTRIBUTES = {
@@ -1125,7 +1172,7 @@ public class ClassWriter {
   private static final StructGeneralAttribute.Key<?>[] TYPE_ANNOTATION_ATTRIBUTES = {
     StructGeneralAttribute.ATTRIBUTE_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, StructGeneralAttribute.ATTRIBUTE_RUNTIME_INVISIBLE_TYPE_ANNOTATIONS};
 
-  private static void appendAnnotations(TextBuffer buffer, int indent, StructMember mb, int targetType) {
+  private static void appendAnnotations(TextBuffer buffer, int indent, StructClass cl, StructMember mb, int targetType) {
     Set<String> filter = new HashSet<>();
 
     for (StructGeneralAttribute.Key<?> key : ANNOTATION_ATTRIBUTES) {
@@ -1145,7 +1192,42 @@ public class ClassWriter {
       }
     }
 
+    if (mb instanceof StructMethod && DecompilerContext.getOption(IFernflowerPreferences.ADD_OVERRIDE_ANNOTATION)) {
+      appendOverrideAnnotation(buffer, indent, cl, (StructMethod) mb);
+    }
+
     appendTypeAnnotations(buffer, indent, mb, targetType, -1, filter);
+  }
+
+  private static void appendOverrideAnnotation(TextBuffer buffer, int indent, StructClass cl, StructMethod method) {
+    if (method.getName().equals("<init>") || Modifier.isStatic(method.getAccessFlags()) || Modifier.isPrivate(method.getAccessFlags())) {
+      return;
+    }
+
+    // TODO: This logic is quite shared with InvocationExprent.getAmbiguousParameters
+    // We should merge it and add generic support to a unified inheritance finder
+    MethodDescriptor descriptor = MethodDescriptor.parseDescriptor(method.getDescriptor());
+
+    Set<StructClass> allParents = InvocationExprent.addAllSuper(new HashSet<>(), cl.qualifiedName);
+    allParents.remove(cl);
+
+    for (StructClass clazz : allParents) {
+      methods:
+      for (StructMethod other : clazz.getMethods()) {
+        if (!Modifier.isStatic(other.getAccessFlags()) && !Modifier.isPrivate(other.getAccessFlags()) && method.getName().equals(other.getName())) {
+          MethodDescriptor md = MethodDescriptor.parseDescriptor(other.getDescriptor());
+          if (md.params.length == descriptor.params.length) {
+            for (int i = 0; i < md.params.length; i++) {
+              if (!md.params[i].equals(descriptor.params[i])) {
+                continue methods;
+              }
+            }
+            buffer.appendIndent(indent).append("@Override").appendLineSeparator();
+            return;
+          }
+        }
+      }
+    }
   }
 
   private static void appendParameterAnnotations(TextBuffer buffer, StructMethod mt, int param) {

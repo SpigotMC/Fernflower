@@ -100,6 +100,12 @@ public class ImportCollector {
   }
 
   public String getShortName(String fullName, boolean imported) {
+    // Spigot start
+    return getShortName(fullName, imported, true);
+  }
+
+  public String getShortName(String fullName, boolean imported, boolean addImport) {
+    // Spigot end
     ClassNode node = DecompilerContext.getClassProcessor().getMapRootClasses().get(fullName.replace('.', '/')); //todo[r.sh] anonymous classes?
 
     String result = null;
@@ -149,7 +155,7 @@ public class ImportCollector {
       //  don't return full name because if the class is a inner class, full name refers to the parent full name, not the child full name
       return result == null ? fullName : (packageName + "." + result);
     }
-    else if (!mapSimpleNames.containsKey(shortName)) {
+    else if (addImport && !mapSimpleNames.containsKey(shortName)) { // Spigot
       mapSimpleNames.put(shortName, packageName);
       if (!imported) {
         setNotImportedNames.add(shortName);
@@ -179,8 +185,9 @@ public class ImportCollector {
                 !JAVA_LANG_PACKAGE.equals(ent.getValue()) &&
                 !ent.getValue().equals(currentPackagePoint)
       )
-      .sorted(Map.Entry.<String, String>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
+      // .sorted(Map.Entry.<String, String>comparingByValue().thenComparing(Map.Entry.comparingByKey())) // Spigot
       .map(ent -> ent.getValue() + "." + ent.getKey())
+      .sorted() // Spigot correct sort order
       .collect(Collectors.toList());
   }
 }

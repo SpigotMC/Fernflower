@@ -92,7 +92,7 @@ public class LambdaProcessor {
               node_lambda.simpleName = cl.qualifiedName + "##Lambda_" + invoke_dynamic.index1 + "_" + invoke_dynamic.index2;
               node_lambda.enclosingMethod = InterpreterUtil.makeUniqueKey(mt.getName(), mt.getDescriptor());
 
-              node.nested.add(node_lambda);
+              node.nested.add(0, node_lambda); // Spigot
               node_lambda.parent = node;
 
               clProcessor.getMapRootClasses().put(node_lambda.simpleName, node_lambda);
