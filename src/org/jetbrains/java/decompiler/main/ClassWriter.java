@@ -192,7 +192,7 @@ public class ClassWriter {
                        wrapper.getHiddenMembers().contains(InterpreterUtil.makeUniqueKey(fd.getName(), fd.getDescriptor()));
         if (hide) continue;
 
-        if (components != null && fd.getAccessFlags() == (CodeConstants.ACC_FINAL | CodeConstants.ACC_PRIVATE) &&
+        if (components != null &&
             components.stream().anyMatch(c -> c.getName().equals(fd.getName()) && c.getDescriptor().equals(fd.getDescriptor()))) {
           // Record component field: skip it
           continue;
@@ -297,6 +297,26 @@ public class ClassWriter {
         if (code.countLines() == 1) {
           String str = code.toString().trim();
           return str.startsWith("return this." + name + "<invokedynamic>(this");
+        }
+      }
+      if (name.equals("<init>")) {
+        StringBuilder canonicalDescriptor = new StringBuilder("(");
+        for (StructRecordComponent recordComponent : cl.getRecordComponents()) {
+          canonicalDescriptor.append(recordComponent.getDescriptor());
+        }
+        canonicalDescriptor.append(")V");
+        if (descriptor.equals(canonicalDescriptor.toString())) {
+          if (code.countLines() == cl.getRecordComponents().size()) {
+            return !code.toString().contains("("); // Good enough for now
+          }
+        }
+      }
+      for (StructRecordComponent recordComponent : cl.getRecordComponents()) {
+        if (name.equals(recordComponent.getName()) && descriptor.equals("()" + recordComponent.getDescriptor())) {
+          if (code.countLines() == 1) {
+            String str = code.toString().trim();
+            return str.equals("return this." + name + ";");
+          }
         }
       }
     }
