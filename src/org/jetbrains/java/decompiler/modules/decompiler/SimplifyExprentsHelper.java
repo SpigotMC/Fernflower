@@ -713,7 +713,7 @@ public class SimplifyExprentsHelper {
 
               // avoid flattening to 'iff' if any of the branches is an 'iff' already
               if (isIff(ifExit.getValue()) || isIff(elseExit.getValue())) {
-                return false;
+                // return false; // Spigot
               }
 
               List<Exprent> data = new ArrayList<>(statement.getFirst().getExprents());

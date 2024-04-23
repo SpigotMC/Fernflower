@@ -451,27 +451,25 @@ public class InvocationExprent extends Exprent {
     return !isStatic && parameters.size() == 0 && className.equals(UNBOXING_METHODS.get(name));
   }
 
+  public static Set<StructClass> addAllSuper(Set<StructClass> set, String clazz) {
+    StructClass cstr = DecompilerContext.getStructContext().getClass(clazz);
+    if (cstr == null) {
+      return set;
+    }
+    set.add(cstr);
+    for (String inter : cstr.getInterfaceNames()) {
+      addAllSuper(set, inter);
+    }
+    addAllSuper(set, cstr.superClass.getString());
+
+    return set;
+  }
+
   private BitSet getAmbiguousParameters() {
+    // Spigot start
+    {
     StructClass cl = DecompilerContext.getStructContext().getClass(className);
     if (cl == null) return EMPTY_BIT_SET;
-
-    // check number of matches
-    List<MethodDescriptor> matches = new ArrayList<>();
-    nextMethod:
-    for (StructMethod mt : cl.getMethods()) {
-      if (name.equals(mt.getName())) {
-        MethodDescriptor md = MethodDescriptor.parseDescriptor(mt.getDescriptor());
-        if (md.params.length == descriptor.params.length) {
-          for (int i = 0; i < md.params.length; i++) {
-            if (md.params[i].getTypeFamily() != descriptor.params[i].getTypeFamily()) {
-              continue nextMethod;
-            }
-          }
-          matches.add(md);
-        }
-      }
-    }
-    if (matches.size() == 1) return EMPTY_BIT_SET;
 
     // check if a call is unambiguous
     StructMethod mt = cl.getMethod(InterpreterUtil.makeUniqueKey(name, stringDescriptor));
@@ -488,6 +486,28 @@ public class InvocationExprent extends Exprent {
         if (exact) return EMPTY_BIT_SET;
       }
     }
+    } // Spigot
+
+    List<MethodDescriptor> matches = new ArrayList<>();
+    for (StructClass cl : addAllSuper(new HashSet<StructClass>(), className)) { // Spigot
+    // check number of matches
+    nextMethod:
+    for (StructMethod mt : cl.getMethods()) {
+      if (name.equals(mt.getName())) {
+        MethodDescriptor md = MethodDescriptor.parseDescriptor(mt.getDescriptor());
+        if (md.params.length == descriptor.params.length) {
+          for (int i = 0; i < md.params.length; i++) {
+            if (md.params[i].getTypeFamily() != descriptor.params[i].getTypeFamily()) {
+              continue nextMethod;
+            }
+          }
+          matches.add(md);
+        }
+      }
+    }
+    } // Spigot
+
+    if (matches.size() == 1) return EMPTY_BIT_SET;
 
     // mark parameters
     BitSet ambiguous = new BitSet(descriptor.params.length);

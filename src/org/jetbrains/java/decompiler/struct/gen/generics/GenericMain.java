@@ -194,24 +194,26 @@ public final class GenericMain {
     List<GenericType> enclosingTypes = type.getEnclosingClasses();
     typeAnnWriteHelpers = ExprProcessor.writeTypeAnnotationBeforeType(type, sb, typeAnnWriteHelpers);
     if (enclosingTypes.isEmpty()) {
-      List<String> nestedTypes = Arrays.asList(
-        DecompilerContext.getImportCollector().getNestedName(type.getValue().replace('/', '.')).split("\\.")
-      );
-      ExprProcessor.writeNestedClass(sb, type, nestedTypes, typeAnnWriteHelpers);
-      ExprProcessor.popNestedTypeAnnotation(typeAnnWriteHelpers);
+      String name = type.getValue().replace('/', '.');
+      sb.append(DecompilerContext.getImportCollector().getNestedName(name));
     }
     else {
       for (GenericType tp : enclosingTypes) {
-        List<String> nestedTypes = Arrays.asList(
-          DecompilerContext.getImportCollector().getNestedName(tp.getValue().replace('/', '.')).split("\\.")
-        );
-        typeAnnWriteHelpers = ExprProcessor.writeNestedClass(sb, type, nestedTypes, typeAnnWriteHelpers);
-        typeAnnWriteHelpers = appendTypeArguments(tp, sb, typeAnnWriteHelpers);
-        ExprProcessor.popNestedTypeAnnotation(typeAnnWriteHelpers);
+        String[] nestedClasses = DecompilerContext.getImportCollector().getNestedName(tp.getValue().replace('/', '.')).split("\\.");
+        for (int i = 0; i < nestedClasses.length; i++) {
+          String nestedType = nestedClasses[i];
+          if (i != 0) { // first annotation is written already
+            ExprProcessor.checkNestedTypeAnnotation(sb, typeAnnWriteHelpers);
+          }
+
+          sb.append(nestedType);
+          if (i != nestedClasses.length - 1) sb.append(".");
+        }
+        appendTypeArguments(tp, sb, typeAnnWriteHelpers);
         sb.append('.');
+        ExprProcessor.checkNestedTypeAnnotation(sb, typeAnnWriteHelpers);
       }
-      typeAnnWriteHelpers = ExprProcessor.writeNestedTypeAnnotations(sb, typeAnnWriteHelpers);
-      ExprProcessor.popNestedTypeAnnotation(typeAnnWriteHelpers);
+
       sb.append(type.getValue());
     }
     appendTypeArguments(type, sb, typeAnnWriteHelpers);

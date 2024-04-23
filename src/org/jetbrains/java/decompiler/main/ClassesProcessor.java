@@ -90,7 +90,7 @@ public class ClassesProcessor {
 
               // enclosing class
               String enclClassName = entry.outerNameIdx != 0 ? entry.enclosingName : cl.qualifiedName;
-              if (enclClassName == null || innerName.equals(enclClassName)) {
+              if (enclClassName == null || innerName.equals(enclClassName) || !enclClassName.equals(cl.qualifiedName)) { // Spigot - use entries from actual class only
                 continue;  // invalid name or self reference
               }
               if (rec.type == ClassNode.CLASS_MEMBER && !innerName.equals(enclClassName + '$' + entry.simpleName)) {

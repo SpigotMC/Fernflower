@@ -148,7 +148,18 @@ public class ConstExprent extends Exprent {
         }
         yield new TextBuffer(ret).enclose("'", "'");
       }
-      case CodeConstants.TYPE_BYTE -> new TextBuffer(value.toString());
+      case CodeConstants.TYPE_BYTE -> {
+        int byteVal = (Integer)value;
+        if (!literal) {
+          if (byteVal == Byte.MAX_VALUE) {
+            yield new FieldExprent("MAX_VALUE", "java/lang/Byte", true, null, FieldDescriptor.BYTE_DESCRIPTOR, bytecode).toJava(0, tracer);
+          }
+          else if (byteVal == Byte.MIN_VALUE) {
+            yield new FieldExprent("MIN_VALUE", "java/lang/Byte", true, null, FieldDescriptor.BYTE_DESCRIPTOR, bytecode).toJava(0, tracer);
+          }
+        }
+        yield new TextBuffer(value.toString());
+      }
       case CodeConstants.TYPE_BYTECHAR, CodeConstants.TYPE_SHORT -> {
         int shortVal = (Integer)value;
         if (!literal) {
@@ -247,15 +258,15 @@ public class ConstExprent extends Exprent {
           }
         }
         else if (Double.isNaN(doubleVal)) {
-          yield new TextBuffer("0.0 / 0.0");
+          yield new TextBuffer("0.0D / 0.0D");
         }
         else if (doubleVal == Double.POSITIVE_INFINITY) {
-          yield new TextBuffer("1.0 / 0.0");
+          yield new TextBuffer("1.0D / 0.0D");
         }
         else if (doubleVal == Double.NEGATIVE_INFINITY) {
-          yield new TextBuffer("-1.0 / 0.0");
+          yield new TextBuffer("-1.0D / 0.0D");
         }
-        yield new TextBuffer(value.toString());
+        yield new TextBuffer(value.toString()).append('D');
       }
       case CodeConstants.TYPE_NULL -> new TextBuffer("null");
       case CodeConstants.TYPE_OBJECT -> {

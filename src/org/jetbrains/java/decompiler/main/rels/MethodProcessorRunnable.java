@@ -96,7 +96,7 @@ public class MethodProcessorRunnable implements Runnable {
 
     DeadCodeHelper.removeGoTos(graph);
 
-    ExceptionDeobfuscator.duplicateMergedCatchBlocks(graph, cl);
+    // ExceptionDeobfuscator.duplicateMergedCatchBlocks(graph, cl); // Spigot
 
     ExceptionDeobfuscator.removeCircularRanges(graph);
 

@@ -261,8 +261,8 @@ public class NewExprent extends Exprent {
         buf.append("new ");
 
         String typename = ExprProcessor.getTypeName(newType, Collections.emptyList());
+        ClassNode newNode = DecompilerContext.getClassProcessor().getMapRootClasses().get(newType.getValue()); // Spigot
         if (enclosing != null) {
-          ClassNode newNode = DecompilerContext.getClassProcessor().getMapRootClasses().get(newType.getValue());
           if (newNode != null) {
             typename = newNode.simpleName;
           }
@@ -271,6 +271,14 @@ public class NewExprent extends Exprent {
           }
         }
         buf.append(typename);
+        // Spigot start
+        if (newNode != null) {
+          GenericClassDescriptor gcd = ClassWriter.getGenericClassDescriptor(newNode.classStruct);
+          if (gcd != null && !gcd.fparameters.isEmpty()) {
+            buf.append("<>");
+          }
+        }
+        // Spigot end
       }
 
       if (constructor != null) {

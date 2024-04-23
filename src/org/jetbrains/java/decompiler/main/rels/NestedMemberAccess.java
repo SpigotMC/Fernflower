@@ -16,6 +16,7 @@ import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.*;
+import org.jetbrains.java.decompiler.modules.decompiler.vars.VarProcessor;
 
 public class NestedMemberAccess {
 
@@ -350,7 +351,7 @@ public class NestedMemberAccess {
         ExitExprent exsource = (ExitExprent)source;
         if (exsource.getValue().type == Exprent.EXPRENT_VAR) { // qualified this
           VarExprent var = (VarExprent)exsource.getValue();
-          String varname = methsource.varproc.getVarName(new VarVersionPair(var));
+          VarProcessor.MutableString varname = methsource.varproc.getVarName(new VarVersionPair(var));
 
           if (!methdest.setOuterVarNames.contains(varname)) {
             VarNamesCollector vnc = new VarNamesCollector();

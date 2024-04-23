@@ -10,6 +10,7 @@ import org.jetbrains.java.decompiler.modules.decompiler.ExprProcessor;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.VarExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.TextBuffer;
 
@@ -101,7 +102,11 @@ public final class CatchAllStatement extends Statement {
 
     TextBuffer buf = new TextBuffer();
 
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
+    TextBuffer defs = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(defs);
+    if (!defs.containsOnlyWhitespaces()) {
+      buf.appendLineSeparator();
+    }
 
     boolean labeled = isLabeled();
     if (labeled) {

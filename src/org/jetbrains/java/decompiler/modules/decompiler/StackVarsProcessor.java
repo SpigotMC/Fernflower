@@ -369,7 +369,7 @@ public class StackVarsProcessor {
 
     //workaround to preserve variable names
     AssignmentExprent assignmentExprent = (AssignmentExprent)exprent;
-    if (assignmentExprent.getRight() instanceof VarExprent && assignmentExprent.getLeft() instanceof VarExprent leftExp) {
+    if (false && assignmentExprent.getRight() instanceof VarExprent && assignmentExprent.getLeft() instanceof VarExprent leftExp) { // Spigot
       StructMethod method = leftExp.getProcessor().getMethod();
       StructLocalVariableTableAttribute attr =
         method.getAttribute(StructGeneralAttribute.ATTRIBUTE_LOCAL_VARIABLE_TABLE);

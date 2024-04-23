@@ -31,6 +31,7 @@ import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.Type;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.TextBuffer;
+import org.jetbrains.java.decompiler.util.Util; // Spigot
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -652,10 +653,12 @@ public class ExprProcessor {
   }
 
   public static String getTypeName(VarType type, List<TypeAnnotationWriteHelper> typePathWriteHelper) {
-    return getTypeName(type, true, typePathWriteHelper);
+    // Spigot start
+    return getTypeName(type, true, typePathWriteHelper, true);
   }
 
-  public static String getTypeName(VarType type, boolean getShort, List<TypeAnnotationWriteHelper> typeAnnWriteHelpers) {
+  public static String getTypeName(VarType type, boolean getShort, List<TypeAnnotationWriteHelper> typeAnnWriteHelpers, boolean imported) {
+    // Spigot end
     int tp = type.getType();
     StringBuilder sb = new StringBuilder();
     typeAnnWriteHelpers = writeTypeAnnotationBeforeType(type, sb, typeAnnWriteHelpers);
@@ -676,18 +679,25 @@ public class ExprProcessor {
       return sb.toString();
     }
     else if (tp == CodeConstants.TYPE_OBJECT) {
-      String ret;
+      // Spigot start
+      String ret = buildJavaClassName(type.getValue());
       if (getShort) {
-        ret = DecompilerContext.getImportCollector().getNestedName(type.getValue());
-      } else {
-        ret = buildJavaClassName(type.getValue());
+        ret = DecompilerContext.getImportCollector().getNestedName(ret, true, imported);
       }
+      // Spigot end
       if (ret == null) {
         return UNDEFINED_TYPE_STRING; // FIXME: a warning should be logged
       }
-      List<String> nestedTypes = Arrays.asList(ret.split("\\."));
-      writeNestedClass(sb, type, nestedTypes, typeAnnWriteHelpers);
-      popNestedTypeAnnotation(typeAnnWriteHelpers);
+      String[] nestedClasses = ret.split("\\.");
+      for (int i = 0; i < nestedClasses.length; i++) {
+        String nestedType = nestedClasses[i];
+        if (i != 0) { // first annotation is written already
+          checkNestedTypeAnnotation(sb, typeAnnWriteHelpers);
+        }
+
+        sb.append(nestedType);
+        if (i != nestedClasses.length - 1) sb.append(".");
+      }
       return sb.toString();
     }
 
@@ -802,14 +812,34 @@ public class ExprProcessor {
     });
   }
 
+  public static void checkNestedTypeAnnotation(StringBuilder sb, List<TypeAnnotationWriteHelper> typePathWriteStack) {
+    typePathWriteStack.removeIf(typeAnnotationWriteHelper -> {
+      StructTypePathEntry path = typeAnnotationWriteHelper.getPaths().peek();
+      if (path != null && path.getTypePathEntryKind() == StructTypePathEntry.Kind.NESTED.getId()) {
+        typeAnnotationWriteHelper.getPaths().pop();
+        if (typeAnnotationWriteHelper.getPaths().isEmpty()) {
+          typeAnnotationWriteHelper.writeTo(sb);
+          return true;
+        }
+      }
+      return false;
+    });
+  }
+
   public static String getCastTypeName(VarType type, List<TypeAnnotationWriteHelper> typePathWriteHelper) {
     return getCastTypeName(type, true, typePathWriteHelper);
   }
 
   public static String getCastTypeName(VarType type, boolean getShort, List<TypeAnnotationWriteHelper> typeAnnWriteHelpers) {
+    // Spigot start
+    return getCastTypeName(type, getShort, typeAnnWriteHelpers, true);
+  }
+
+  public static String getCastTypeName(VarType type, boolean getShort, List<TypeAnnotationWriteHelper> typeAnnWriteHelpers, boolean imported) {
+    // Spigot end
     List<TypeAnnotationWriteHelper> arrayTypeAnnWriteHelpers = arrayPath(type, typeAnnWriteHelpers);
     List<TypeAnnotationWriteHelper> nonArrayTypeAnnWriteHelpers = nonArrayPath(type, typeAnnWriteHelpers);
-    StringBuilder sb = new StringBuilder(getTypeName(type, getShort, nonArrayTypeAnnWriteHelpers));
+    StringBuilder sb = new StringBuilder(getTypeName(type, getShort, nonArrayTypeAnnWriteHelpers, imported)); // Spigot
     writeArray(sb, type.getArrayDim(), arrayTypeAnnWriteHelpers);
     return sb.toString();
   }
@@ -880,7 +910,17 @@ public class ExprProcessor {
   }
 
   public static TextBuffer jmpWrapper(Statement stat, int indent, boolean semicolon, BytecodeMappingTracer tracer) {
-    TextBuffer buf = stat.toJava(indent, tracer);
+    // Spigot start
+    TextBuffer buf = new TextBuffer();
+    TextBuffer content = stat.toJava(indent, tracer);
+    if (!(stat instanceof IfStatement) && !(stat instanceof DoStatement) && !(stat instanceof SequenceStatement)) {
+      content = new TextBuffer(Util.rtrim(content.toString()));
+    }
+    buf.append(content);
+    if (!(stat instanceof IfStatement) && !(stat instanceof DoStatement) && !(stat instanceof SequenceStatement) && buf.length() != 0) {
+      buf.appendLineSeparator();
+    }
+    // Spigot end
 
     List<StatEdge> successorEdges = stat.getSuccessorEdges(EdgeType.DIRECT_ALL);
     if (successorEdges.size() == 1) {
@@ -933,6 +973,10 @@ public class ExprProcessor {
     }
 
     TextBuffer buf = new TextBuffer();
+    // Spigot start
+    boolean inVar = false;
+    boolean bloodySpecialCaseForNewAssignments = false;
+    // Spigot end
 
     for (Exprent expr : lst) {
       if (buf.length() > 0 && expr.type == Exprent.EXPRENT_VAR && ((VarExprent)expr).isClassDef()) {
@@ -944,6 +988,31 @@ public class ExprProcessor {
       TextBuffer content = expr.toJava(indent, tracer);
 
       if (content.length() > 0) {
+        // Spigot start
+        if (expr instanceof VarExprent || expr instanceof AssignmentExprent) {
+          inVar = true;
+          boolean wasASpecialLittleFlower = bloodySpecialCaseForNewAssignments;
+          bloodySpecialCaseForNewAssignments = expr instanceof VarExprent;
+          if (expr instanceof AssignmentExprent && ((AssignmentExprent) expr).getLeft() instanceof VarExprent) {
+            AssignmentExprent assignmentExprent = (AssignmentExprent) expr;
+            VarExprent var = (VarExprent) assignmentExprent.getLeft();
+            bloodySpecialCaseForNewAssignments = var.isDefinition();
+          }
+          if (wasASpecialLittleFlower && !bloodySpecialCaseForNewAssignments) {
+            buf.appendLineSeparator();
+          }
+        } else if (inVar) {
+          inVar = false;
+          if (!(expr instanceof InvocationExprent
+                  || expr instanceof ExitExprent
+                  || expr instanceof FunctionExprent
+              )
+                  || bloodySpecialCaseForNewAssignments) {
+            bloodySpecialCaseForNewAssignments = false;
+            buf.appendLineSeparator();
+          }
+        }
+        // Spigot end
         if (expr.type != Exprent.EXPRENT_VAR || !((VarExprent)expr).isClassDef()) {
           buf.appendIndent(indent);
         }
@@ -1016,7 +1085,7 @@ public class ExprProcessor {
     VarType rightType = exprent.getExprType();
 
     boolean cast =
-      castAlways ||
+      (castAlways && !leftType.equals(rightType)) || // Spigot
       (!leftType.isSuperset(rightType) && (rightType.equals(VarType.VARTYPE_OBJECT) || leftType.getType() != CodeConstants.TYPE_OBJECT)) ||
       (castNull && rightType.getType() == CodeConstants.TYPE_NULL && !UNDEFINED_TYPE_STRING.equals(getTypeName(leftType, Collections.emptyList()))) ||
       (castNarrowing && isIntConstant(exprent) && isNarrowedIntType(leftType));

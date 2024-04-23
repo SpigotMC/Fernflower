@@ -162,17 +162,6 @@ public final class SecondaryFunctionsHelper {
               }
 
               if (desttype >= 0) {
-                if (functype != FunctionExprent.FUNCTION_LCMP) {
-                  boolean oneForNan = functype == FunctionExprent.FUNCTION_DCMPL || functype == FunctionExprent.FUNCTION_FCMPL;
-                  boolean trueForOne = desttype == FunctionExprent.FUNCTION_LT || desttype == FunctionExprent.FUNCTION_LE;
-                  boolean trueForNan = oneForNan == trueForOne;
-                  if (trueForNan) {
-                    List<Exprent> operands = new ArrayList<>();
-                    operands.add(new FunctionExprent(funcsnot[desttype - FunctionExprent.FUNCTION_EQ],
-                                                     funcexpr.getLstOperands(), funcexpr.bytecode));
-                    return new FunctionExprent(FunctionExprent.FUNCTION_BOOL_NOT, operands, funcexpr.bytecode);
-                  }
-                }
                 return new FunctionExprent(desttype, funcexpr.getLstOperands(), funcexpr.bytecode);
               }
             }
@@ -379,7 +368,6 @@ public final class SecondaryFunctionsHelper {
           FunctionExprent fparam = (FunctionExprent)param;
 
           int ftype = fparam.getFuncType();
-          boolean canSimplify = false;
           switch (ftype) {
             case FunctionExprent.FUNCTION_BOOL_NOT:
               Exprent newexpr = fparam.getLstOperands().get(0);
@@ -395,21 +383,9 @@ public final class SecondaryFunctionsHelper {
               }
             }
             case FunctionExprent.FUNCTION_EQ, FunctionExprent.FUNCTION_NE:
-              canSimplify = true;
             case FunctionExprent.FUNCTION_LT, FunctionExprent.FUNCTION_GE, FunctionExprent.FUNCTION_GT, FunctionExprent.FUNCTION_LE:
-              if (!canSimplify) {
-                List<Exprent> operands = fparam.getLstOperands();
-                VarType left = operands.get(0).getExprType();
-                VarType right = operands.get(1).getExprType();
-                VarType commonSupertype = VarType.getCommonSupertype(left, right);
-                if (commonSupertype != null) {
-                  canSimplify = commonSupertype.getType() != CodeConstants.TYPE_FLOAT && commonSupertype.getType() != CodeConstants.TYPE_DOUBLE;
-                }
-              }
-              if (canSimplify) {
-                fparam.setFuncType(funcsnot[ftype - FunctionExprent.FUNCTION_EQ]);
-                return fparam;
-              }
+              fparam.setFuncType(funcsnot[ftype - FunctionExprent.FUNCTION_EQ]);
+              return fparam;
           }
         }
       }

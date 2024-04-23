@@ -36,6 +36,7 @@ public interface IFernflowerPreferences {
   String VERIFY_ANONYMOUS_CLASSES = "vac";
   String CONVERT_RECORD_PATTERN = "crp";
   String CONVERT_PATTERN_SWITCH = "cps";
+  String ADD_OVERRIDE_ANNOTATION = "aoa";
 
   String LOG_LEVEL = "log";
   String MAX_PROCESSING_METHOD = "mpm";
@@ -84,12 +85,13 @@ public interface IFernflowerPreferences {
     defaults.put(VERIFY_ANONYMOUS_CLASSES, "0");
     defaults.put(CONVERT_RECORD_PATTERN, "0");
     defaults.put(CONVERT_PATTERN_SWITCH, "0");
+    defaults.put(ADD_OVERRIDE_ANNOTATION, "0");
 
     defaults.put(LOG_LEVEL, IFernflowerLogger.Severity.INFO.name());
     defaults.put(MAX_PROCESSING_METHOD, "0");
     defaults.put(RENAME_ENTITIES, "0");
     defaults.put(NEW_LINE_SEPARATOR, (InterpreterUtil.IS_WINDOWS ? "0" : "1"));
-    defaults.put(INDENT_STRING, "   ");
+    defaults.put(INDENT_STRING, "    ");
     defaults.put(BANNER, "");
     defaults.put(UNIT_TEST_MODE, "0");
     defaults.put(DUMP_ORIGINAL_LINES, "0");

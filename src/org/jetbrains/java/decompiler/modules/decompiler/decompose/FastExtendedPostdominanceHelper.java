@@ -44,12 +44,16 @@ public class FastExtendedPostdominanceHelper {
 
     removeErroneousNodes();
 
+    // Spigot start - just makes the decompile worse (see CommandDispatcher)
+    /*
     DominatorTreeExceptionFilter filter = new DominatorTreeExceptionFilter(statement);
     filter.initialize();
 
     filterOnExceptionRanges(filter);
 
     filterOnDominance(filter);
+    */
+    // Spigot end
 
     Set<Entry<Integer, FastFixedSet<Integer>>> entries = mapExtPostdominators.entrySet();
     HashMap<Integer, Set<Integer>> res = new HashMap<>(entries.size());
@@ -76,8 +80,7 @@ public class FastExtendedPostdominanceHelper {
       stackPath.add(factory.spawnEmptySet());
 
       Set<Statement> setVisited = new HashSet<>();
-
-      setVisited.add(stack.getFirst());
+      Set<Statement> setStack = new HashSet<>();
 
       while (!stack.isEmpty()) {
 
@@ -92,21 +95,34 @@ public class FastExtendedPostdominanceHelper {
           continue;
         }
 
-        if(!engine.isDominator(stat.id, head)) {
-          setPostdoms.complement(path);
-          continue;
+        setVisited.add(stat);
+
+        int domflag = 0;
+
+        for (Iterator<Integer> it = setPostdoms.iterator(); it.hasNext(); ) {
+          Integer post = it.next();
+
+          if (!path.contains(post)) {
+            if (domflag == 0) {
+              domflag = engine.isDominator(stat.id, head) ? 2 : 1;
+            }
+
+            if (domflag == 1) { // not a dominator
+              it.remove();
+            }
+          }
         }
 
         for (StatEdge edge : stat.getSuccessorEdges(EdgeType.REGULAR)) {
 
           Statement edge_destination = edge.getDestination();
 
-          if(!setVisited.contains(edge_destination)) {
+          if(!setVisited.contains(edge_destination) && !setStack.contains(edge_destination)) {
 
             stack.add(edge_destination);
             stackPath.add(path.getCopy());
 
-            setVisited.add(edge_destination);
+            setStack.add(edge_destination);
           }
         }
       }
