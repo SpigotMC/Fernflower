@@ -89,11 +89,11 @@ public final class StackVarsProcessor {
       if (expr.type == Exprent.EXPRENT_VAR) {
         VarExprent varExprent = (VarExprent)expr;
         VarVersion previousPair = varExprent.getVarVersion();
-        String name = varExprent.getProcessor().getVarName(previousPair);
-        String assignedName = varExprent.getProcessor().getAssignedVarName(previousPair);
+        VarProcessor.MutableString name = varExprent.getProcessor().getVarName(previousPair); // Spigot
+        VarProcessor.MutableString assignedName = varExprent.getProcessor().getAssignedVarName(previousPair); // Spigot
         varExprent.setVersion(0);
-        String name0 = varExprent.getProcessor().getVarName(varExprent.getVarVersion());
-        String assignedName0 = varExprent.getProcessor().getAssignedVarName(varExprent.getVarVersion());
+        VarProcessor.MutableString name0 = varExprent.getProcessor().getVarName(varExprent.getVarVersion()); // Spigot
+        VarProcessor.MutableString assignedName0 = varExprent.getProcessor().getAssignedVarName(varExprent.getVarVersion()); // Spigot
         if (name == null && name0 == null && assignedName != null && assignedName0 == null) {
           varExprent.getProcessor().setAssignedVarName(varExprent.getVarVersion(), assignedName);
         }
@@ -369,7 +369,7 @@ public final class StackVarsProcessor {
     /*local variables are used now
     //workaround to preserve variable names
     AssignmentExprent assignmentExprent = (AssignmentExprent)exprent;
-    if (assignmentExprent.getRight() instanceof VarExprent && assignmentExprent.getLeft() instanceof VarExprent leftExp) {
+    if (false && assignmentExprent.getRight() instanceof VarExprent && assignmentExprent.getLeft() instanceof VarExprent leftExp) { // Spigot
       StructMethod method = leftExp.getProcessor().getMethod();
       StructLocalVariableTableAttribute attr =
         method.getAttribute(StructGeneralAttribute.ATTRIBUTE_LOCAL_VARIABLE_TABLE);
@@ -402,8 +402,8 @@ public final class StackVarsProcessor {
           rightVarExprent.getLVTEntry() == null) {
         //try to save at least name
         VarProcessor processor = rightVarExprent.getProcessor();
-        String name = processor.getVarName(rightVarExprent.getVarVersion());
-        String name0 = processor.getVarName(new VarVersion(rightVarExprent.getIndex(), 0));
+        VarProcessor.MutableString name = processor.getVarName(rightVarExprent.getVarVersion()); // Spigot
+        VarProcessor.MutableString name0 = processor.getVarName(new VarVersion(rightVarExprent.getIndex(), 0)); // Spigot
         StructLocalVariableTableAttribute.LocalVariable lvt = processor.getVarLVTEntry(rightVarExprent.getVarVersion());
         StructLocalVariableTableAttribute.LocalVariable lvt0 = processor.getVarLVTEntry(new VarVersion(rightVarExprent.getIndex(), 0));
         if (name == null &&
@@ -411,7 +411,7 @@ public final class StackVarsProcessor {
             lvt0 == null &&
             lvt == null &&
             processor.getAssignedVarName(rightVarExprent.getVarVersion()) == null) {
-          processor.setAssignedVarName(rightVarExprent.getVarVersion(), left.getName());
+          // processor.setAssignedVarName(rightVarExprent.getVarVersion(), left.getName()); // Spigot
         }
       }
       // remove assignment

@@ -5,6 +5,12 @@ probably for a high-level programming language in general. Naturally it is still
 under development, please send your bug reports and improvement suggestions to the
 [issue tracker](https://youtrack.jetbrains.com/newIssue?project=IDEA&clearDraft=true&c=Subsystem+Java. Decompiler).
 
+### About this repository
+
+This repository was split from the main intellij-community repository using the following command:
+
+`git filter-repo --source intellij-community --target FernFlower --path plugins/java-decompiler/engine --path-rename plugins/java-decompiler/engine/: --prune-empty always --prune-degenerate always`
+
 ### FernFlower and ForgeFlower
 
 FernFlower includes some patches from [ForgeFlower](https://github.com/MinecraftForge/ForgeFlower).

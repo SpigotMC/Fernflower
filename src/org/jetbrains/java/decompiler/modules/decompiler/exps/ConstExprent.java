@@ -226,7 +226,18 @@ public class ConstExprent extends Exprent {
         }
         yield new TextBuffer(ret).enclose("'", "'");
       }
-      case CodeConstants.TYPE_BYTE -> new TextBuffer(value.toString());
+      case CodeConstants.TYPE_BYTE -> {
+        int byteVal = (Integer)value;
+        if (!literal) {
+          if (byteVal == Byte.MAX_VALUE) {
+            yield new FieldExprent("MAX_VALUE", "java/lang/Byte", true, null, FieldDescriptor.BYTE_DESCRIPTOR, bytecode).toJava(0, tracer);
+          }
+          else if (byteVal == Byte.MIN_VALUE) {
+            yield new FieldExprent("MIN_VALUE", "java/lang/Byte", true, null, FieldDescriptor.BYTE_DESCRIPTOR, bytecode).toJava(0, tracer);
+          }
+        }
+        yield new TextBuffer(value.toString());
+      }
       case CodeConstants.TYPE_BYTECHAR, CodeConstants.TYPE_SHORT -> {
         int shortVal = (Integer)value;
         if (!literal) {

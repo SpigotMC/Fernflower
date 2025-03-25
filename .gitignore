@@ -2,3 +2,11 @@
 /.gradle/
 /build/
 /out/
+
+/dist/
+/nbproject/
+/target
+
+*.iml
+nbactions.xml
+nb-configuration.xml

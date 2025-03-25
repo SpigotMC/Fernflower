@@ -4,6 +4,7 @@ package org.jetbrains.java.decompiler.struct.gen;
 import org.jetbrains.java.decompiler.code.CodeConstants;
 
 public final class FieldDescriptor {
+  public static final FieldDescriptor BYTE_DESCRIPTOR = parseDescriptor("Ljava/lang/Byte;");
   public static final FieldDescriptor SHORT_DESCRIPTOR = parseDescriptor("Ljava/lang/Short;");
   public static final FieldDescriptor INTEGER_DESCRIPTOR = parseDescriptor("Ljava/lang/Integer;");
   public static final FieldDescriptor LONG_DESCRIPTOR = parseDescriptor("Ljava/lang/Long;");
