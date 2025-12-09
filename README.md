@@ -9,6 +9,12 @@ and probably for a high-level programming language in general.
 Naturally, it is still under development.
 Please send your bug reports and improvement suggestions to the [issue tracker] (in subsystem `Java. Decompiler. Engine`).
 
+### About this repository
+
+This repository was split from the main intellij-community repository using the following command:
+
+`git filter-repo --source intellij-community --target Fernflower --path plugins/java-decompiler/engine --path-rename plugins/java-decompiler/engine/: --prune-empty always --prune-degenerate always`
+
 ### Naming
 
 The correct name is Fernflower, not FernFlower.

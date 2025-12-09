@@ -8,12 +8,14 @@ import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.IfExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.*;
 import org.jetbrains.java.decompiler.struct.match.IMatchable;
 import org.jetbrains.java.decompiler.struct.match.MatchEngine;
 import org.jetbrains.java.decompiler.struct.match.MatchNode;
 import org.jetbrains.java.decompiler.util.StartEndPair;
 import org.jetbrains.java.decompiler.util.TextBuffer;
 import org.jetbrains.java.decompiler.util.TextUtil;
+import org.jetbrains.java.decompiler.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -194,7 +196,40 @@ public final class IfStatement extends Statement {
     TextBuffer buf = new TextBuffer();
 
     buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+
+    boolean bloodySpecialCases = false;
+    if (first instanceof BasicBlockStatement) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent last = exps.get(exps.size() - 1);
+        if (last instanceof AssignmentExprent) {
+          AssignmentExprent assignmentExprent = (AssignmentExprent) exps.get(exps.size() - 1);
+          bloodySpecialCases = true;
+          if (assignmentExprent.getLeft() instanceof VarExprent) {
+            VarExprent var = (VarExprent) assignmentExprent.getLeft();
+            bloodySpecialCases = !var.isDefinition();
+          }
+        } else if (last instanceof InvocationExprent) {
+          bloodySpecialCases = true;
+        }
+      }
+    }
+
+    if (bloodySpecialCases) {
+      buf.append(Util.rtrim(first.toJava(indent, tracer).toString())).appendLineSeparator();
+    } else {
+      TextBuffer content = first.toJava(indent, tracer);
+      buf.append(content);
+      if (first instanceof BasicBlockStatement && !content.containsOnlyWhitespaces()) {
+        List<Exprent> exps = first.getExprents();
+        if (exps.size() != 0) {
+          Exprent e = exps.get(exps.size() - 1);
+          if (!(e instanceof InvocationExprent || e instanceof FunctionExprent)) {
+            buf.appendLineSeparator();
+          }
+        }
+      }
+    }
 
     if (isLabeled()) {
       buf.appendIndent(indent).append("label").append(Integer.toString(id)).append(":").appendLineSeparator();
@@ -205,26 +240,24 @@ public final class IfStatement extends Statement {
     tracer.incrementCurrentSourceLine();
 
     if (ifstat == null) {
-      boolean semicolon = false;
+      buf.appendIndent(indent + 1);
+
       if (ifedge.explicit) {
-        semicolon = true;
         if (ifedge.getType() == EdgeType.BREAK) {
           // break
-          buf.appendIndent(indent + 1).append("break");
+          buf.append("break");
         }
         else {
           // continue
-          buf.appendIndent(indent + 1).append("continue");
+          buf.append("continue");
         }
 
         if (ifedge.labeled) {
           buf.append(" label").append(Integer.toString(ifedge.closure.id));
         }
       }
-      if(semicolon) {
-        buf.append(";").appendLineSeparator();
-        tracer.incrementCurrentSourceLine();
-      }
+      buf.append(";").appendLineSeparator();
+      tracer.incrementCurrentSourceLine();
     }
     else {
       buf.append(ExprProcessor.jmpWrapper(ifstat, indent + 1, true, tracer));

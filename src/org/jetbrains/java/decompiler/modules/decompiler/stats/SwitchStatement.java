@@ -164,8 +164,26 @@ public final class SwitchStatement extends Statement {
   public @NotNull TextBuffer toJava(int indent, @NotNull BytecodeMappingTracer tracer) {
     SwitchHelper.simplifySwitchOnEnum(this);
     TextBuffer buf = new TextBuffer();
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+    // Spigot start
+    TextBuffer content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.containsOnlyWhitespaces()) {
+      buf.appendLineSeparator();
+    }
+    content = first.toJava(indent, tracer);
+    buf.append(content);
+    if (first instanceof BasicBlockStatement && !content.containsOnlyWhitespaces()) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent e = exps.get(exps.size() - 1);
+        if (!(e instanceof InvocationExprent
+                || e instanceof FunctionExprent
+                || (e instanceof AssignmentExprent && !(((AssignmentExprent) e).getLeft() instanceof VarExprent && ((VarExprent) ((AssignmentExprent) e).getLeft()).isDefinition())))) {
+          buf.appendLineSeparator();
+        }
+      }
+    }
+    // Spigot end
     if (isLabeled()) {
       buf.appendIndent(indent).append("label").append(Integer.toString(id)).append(":").appendLineSeparator();
       tracer.incrementCurrentSourceLine();

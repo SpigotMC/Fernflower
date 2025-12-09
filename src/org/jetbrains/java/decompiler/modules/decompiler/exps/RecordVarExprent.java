@@ -31,7 +31,7 @@ public class RecordVarExprent extends VarExprent {
     }
     TextBuffer buffer = new TextBuffer();
 
-    appendDefinitionType(buffer);
+    buffer.append(getDefinitionType(true)); // Spigot
 
     buffer.append("(");
     for (int i = 0; i < components.size(); i++) {
