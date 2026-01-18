@@ -125,7 +125,7 @@ public class ClassWrapper {
       if (!isError) {
         // rename vars so that no one has the same name as a field
         VarNamesCollector namesCollector = new VarNamesCollector();
-        classStruct.getFields().forEach(f -> namesCollector.addName(f.getName()));
+        classStruct.getFields().forEach(f -> namesCollector.addName(new VarProcessor.MutableString(f.getName())));
         varProc.refreshVarNames(namesCollector);
 
         applyParameterNames(mt, md, varProc);  // if parameter names are present and should be used
@@ -148,10 +148,10 @@ public class ClassWrapper {
         for (int i = varProc.getFirstParameterPosition(); i < entries.size(); i++) {
           StructMethodParametersAttribute.Entry entry = entries.get(i);
           if (entry.myName != null) {
-            varProc.setVarName(new VarVersion(index, 0), entry.myName);
+            varProc.setVarName(new VarVersion(index, 0), new VarProcessor.MutableString(entry.myName)); // Spigot
           }
           if ((entry.myAccessFlags & CodeConstants.ACC_FINAL) != 0) {
-            varProc.setParameterFinal(new VarVersion(index, 0));
+            // varProc.setParameterFinal(new VarVersion(index, 0)); // Spigot - ignore
           }
           index += md.params[i].getStackSize();
         }

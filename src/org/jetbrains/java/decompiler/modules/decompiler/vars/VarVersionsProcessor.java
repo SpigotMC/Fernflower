@@ -281,7 +281,7 @@ public class VarVersionsProcessor {
           VarExprent newVar = (VarExprent)expr;
           Integer newVarIndex = mapVarPaar.get(new VarVersion(newVar));
           if (newVarIndex != null) {
-            String name = newVar.getProcessor().getAssignedVarName(new VarVersion(newVar.getIndex(), 0));
+            VarProcessor.MutableString name = newVar.getProcessor().getAssignedVarName(new VarVersion(newVar.getIndex(), 0)); // Spigot
             newVar.setIndex(newVarIndex);
             newVar.setVersion(0);
             if (name != null && newVar.getLVTEntry() == null && newVar.getProcessor().getVarName(newVar.getVarVersion()) == null) {

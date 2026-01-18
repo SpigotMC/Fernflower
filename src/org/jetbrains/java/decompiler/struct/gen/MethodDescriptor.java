@@ -90,7 +90,7 @@ public final class MethodDescriptor {
         }
         if (actualParams != sig.parameterTypes.size()) {
           String message = "Inconsistent generic signature in method " + struct.getName() + " " + struct.getDescriptor() + " in " + struct.getClassQualifiedName();
-          DecompilerContext.getLogger().writeMessage(message, IFernflowerLogger.Severity.WARN);
+          DecompilerContext.getLogger().writeMessage(message, IFernflowerLogger.Severity.TRACE); // Spigot - trace
           sig = null;
         }
       }

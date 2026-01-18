@@ -82,8 +82,11 @@ public class VarDefinitionHelper {
       StructClass current_class = (StructClass)DecompilerContext.getProperty(DecompilerContext.CURRENT_CLASS);
 
       varproc.getThisVars().put(new VarVersion(0, 0), current_class.qualifiedName);
-      varproc.setVarName(new VarVersion(0, 0), "this");
-      vc.addName("this");
+      // Spigot start
+      VarProcessor.MutableString thisName = new VarProcessor.MutableString("this");
+      varproc.setVarName(new VarVersion(0, 0), thisName);
+      vc.addName(thisName);
+      // Spigot end
     }
 
     mergeVars(root);
@@ -111,7 +114,7 @@ public class VarDefinitionHelper {
         for (VarExprent var : lstVars) {
           implDefVars.add(var.getIndex());
           VarVersion pair = new VarVersion(var);
-          String name = varproc.getAssignedVarName(pair);
+          VarProcessor.MutableString name = varproc.getAssignedVarName(pair); // Spigot
           if (varproc.getVarName(pair) == null) {
             if (name != null) {
               varproc.setVarName(pair, name);
@@ -144,7 +147,7 @@ public class VarDefinitionHelper {
 
 
       VarVersion pair = new VarVersion(index.intValue(), 0);
-      String name = varproc.getAssignedVarName(pair);
+      VarProcessor.MutableString name = varproc.getAssignedVarName(pair); // Spigot
       if (name != null) {
         varproc.setVarName(pair, name);
       }
@@ -897,7 +900,7 @@ public class VarDefinitionHelper {
       String rename = renames == null ? null : renames.get(idx);
 
       if (rename != null) {
-        varproc.setVarName(idx, rename);
+        varproc.setVarName(idx, new VarProcessor.MutableString(rename)); // Spigot
       }
 
       if (lvt != null) {

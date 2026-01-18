@@ -36,6 +36,7 @@ public interface IFernflowerPreferences {
   String VERIFY_ANONYMOUS_CLASSES = "vac";
   String CONVERT_RECORD_PATTERN = "crp";
   String CONVERT_PATTERN_SWITCH = "cps";
+  String ADD_OVERRIDE_ANNOTATION = "aoa";
 
   String STANDARDIZE_FLOATING_POINT_NUMBERS = "sfn";
   String INCLUDE_ENTIRE_CLASSPATH = "iec";
@@ -99,18 +100,19 @@ public interface IFernflowerPreferences {
     defaults.put(VERIFY_ANONYMOUS_CLASSES, "0");
     defaults.put(CONVERT_RECORD_PATTERN, "0");
     defaults.put(CONVERT_PATTERN_SWITCH, "0");
+    defaults.put(ADD_OVERRIDE_ANNOTATION, "0");
 
-    defaults.put(STANDARDIZE_FLOATING_POINT_NUMBERS, "0");
+    defaults.put(STANDARDIZE_FLOATING_POINT_NUMBERS, "1");
     defaults.put(INCLUDE_ENTIRE_CLASSPATH, "0");
-    defaults.put(CHECK_CLOSABLE_INTERFACE, "1");
-    defaults.put(INLINE_SIMPLE_LAMBDAS, "1");
+    defaults.put(CHECK_CLOSABLE_INTERFACE, "0");
+    defaults.put(INLINE_SIMPLE_LAMBDAS, "0");
     defaults.put(HIDE_RECORD_CONSTRUCTOR_AND_GETTERS, "1");
 
     defaults.put(LOG_LEVEL, IFernflowerLogger.Severity.INFO.name());
     defaults.put(MAX_PROCESSING_METHOD, "0");
     defaults.put(RENAME_ENTITIES, "0");
     defaults.put(NEW_LINE_SEPARATOR, (InterpreterUtil.IS_WINDOWS ? "0" : "1"));
-    defaults.put(INDENT_STRING, "   ");
+    defaults.put(INDENT_STRING, "    ");
     defaults.put(BANNER, "");
     defaults.put(UNIT_TEST_MODE, "0");
     defaults.put(DUMP_ORIGINAL_LINES, "0");

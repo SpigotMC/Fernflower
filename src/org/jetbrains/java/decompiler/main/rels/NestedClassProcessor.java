@@ -33,6 +33,7 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.*;
 import java.util.Map.Entry;
+import org.jetbrains.java.decompiler.modules.decompiler.vars.VarProcessor;
 
 public class NestedClassProcessor {
   public void processClass(ClassNode root, ClassNode node) {
@@ -114,10 +115,10 @@ public class NestedClassProcessor {
     // this pointer
     if (!is_static_lambda_content && DecompilerContext.getOption(IFernflowerPreferences.LAMBDA_TO_ANONYMOUS_CLASS)) {
       method.varproc.getThisVars().put(new VarVersion(0, 0), parent_class_name);
-      method.varproc.setVarName(new VarVersion(0, 0), parent.simpleName + ".this");
+      method.varproc.setVarName(new VarVersion(0, 0), new VarProcessor.MutableString(parent.simpleName + ".this"));
     }
 
-    Map<VarVersion, String> mapNewNames = new HashMap<>();
+    Map<VarVersion, VarProcessor.MutableString> mapNewNames = new HashMap<>();
     Map<VarVersion, LocalVariable> lvts = new HashMap<>();
 
     enclosingMethod.getOrBuildGraph().iterateExprents(exprent -> {
@@ -160,13 +161,13 @@ public class NestedClassProcessor {
     });
 
     // update names of local variables
-    Set<String> setNewOuterNames = new HashSet<>(mapNewNames.values());
+    Set<VarProcessor.MutableString> setNewOuterNames = new HashSet<>(mapNewNames.values());
     setNewOuterNames.removeAll(method.setOuterVarNames);
 
     method.varproc.refreshVarNames(new VarNamesCollector(setNewOuterNames));
     method.setOuterVarNames.addAll(setNewOuterNames);
 
-    for (Entry<VarVersion, String> entry : mapNewNames.entrySet()) {
+    for (Entry<VarVersion, VarProcessor.MutableString> entry : mapNewNames.entrySet()) {
       VarVersion pair = entry.getKey();
       LocalVariable lvt = lvts.get(pair);
 
@@ -448,7 +449,7 @@ public class NestedClassProcessor {
     // iterate all child methods
     for (MethodWrapper method : child.getWrapper().getMethods()) {
       if (method.root != null) { // neither abstract nor native
-        Map<VarVersion, String> mapNewNames = new HashMap<>();  // local var names
+        Map<VarVersion, VarProcessor.MutableString> mapNewNames = new HashMap<>();  // local var names
         Map<VarVersion, VarType> mapNewTypes = new HashMap<>();  // local var types
         Map<VarVersion, LocalVariable> mapNewLVTs = new HashMap<>(); // local var table entries
 
@@ -463,7 +464,7 @@ public class NestedClassProcessor {
 
               mapParamsToNewVars.put(varIndex, newVar);
 
-              String varName = null;
+              VarProcessor.MutableString varName = null;
               VarType varType = null;
               LocalVariable varLVT = null;
 
@@ -475,16 +476,16 @@ public class NestedClassProcessor {
                 enclosingMethod.varproc.setVarFinal(pair, VarProcessor.VAR_EXPLICIT_FINAL);
               }
 
-              if (pair.var == -1 || "this".equals(varName) || (varLVT != null && "this".equals(varLVT.getName()))) {
+              if (pair.var == -1 || varName.equals("this") || (varLVT != null && varLVT.getName().equals("this"))) { // Spigot
                 if (parent.simpleName == null) {
                   // anonymous enclosing class, no access to this
-                  varName = VarExprent.VAR_NAMELESS_ENCLOSURE;
+                  varName = new VarProcessor.MutableString(VarExprent.VAR_NAMELESS_ENCLOSURE);
                 }
                 else {
-                  varName = parent.simpleName + ".this";
+                  varName = new VarProcessor.MutableString(parent.simpleName + ".this");
                 }
                 if (varLVT != null) {
-                  varLVT = varLVT.rename(varName);
+                  varLVT = varLVT.rename(varName.string); // Spigot
                 }
                 method.varproc.getThisVars().put(newVar, parent.classStruct.qualifiedName);
               }
@@ -505,7 +506,7 @@ public class NestedClassProcessor {
 
             mapFieldsToNewVars.put(InterpreterUtil.makeUniqueKey(classNode.classStruct.qualifiedName, entry.getKey()), newVar);
 
-            String varName = null;
+            VarProcessor.MutableString varName = null;
             VarType varType = null;
             LocalVariable varLVT = null;
 
@@ -519,16 +520,16 @@ public class NestedClassProcessor {
               enclosing_method.varproc.setVarFinal(entry.getValue(), VarProcessor.VAR_EXPLICIT_FINAL);
             }
 
-            if (entry.getValue().var == -1 || "this".equals(varName) || (varLVT != null && "this".equals(varLVT.getName()))) {
+            if (entry.getValue().var == -1 || varName.equals("this") || (varLVT != null && varLVT.getName().equals("this"))) { // Spigot
               if (classNode.parent.simpleName == null) {
                 // anonymous enclosing class, no access to this
-                varName = VarExprent.VAR_NAMELESS_ENCLOSURE;
+                varName = new VarProcessor.MutableString(VarExprent.VAR_NAMELESS_ENCLOSURE);
               }
               else {
-                varName = classNode.parent.simpleName + ".this";
+                varName = new VarProcessor.MutableString(classNode.parent.simpleName + ".this");
               }
               if (varLVT != null) {
-                varLVT = varLVT.rename(varName);
+                varLVT = varLVT.rename(varName.string); // Spigot
               }
               method.varproc.getThisVars().put(newVar, classNode.parent.classStruct.qualifiedName);
             }
@@ -545,13 +546,13 @@ public class NestedClassProcessor {
           }
         }
 
-        Set<String> setNewOuterNames = new HashSet<>(mapNewNames.values());
+        Set<VarProcessor.MutableString> setNewOuterNames = new HashSet<>(mapNewNames.values());
         setNewOuterNames.removeAll(method.setOuterVarNames);
 
         method.varproc.refreshVarNames(new VarNamesCollector(setNewOuterNames));
         method.setOuterVarNames.addAll(setNewOuterNames);
 
-        for (Entry<VarVersion, String> entry : mapNewNames.entrySet()) {
+        for (Entry<VarVersion, VarProcessor.MutableString> entry : mapNewNames.entrySet()) {
           VarVersion pair = entry.getKey();
           VarType type = mapNewTypes.get(pair);
           LocalVariable lvt = mapNewLVTs.get(pair);

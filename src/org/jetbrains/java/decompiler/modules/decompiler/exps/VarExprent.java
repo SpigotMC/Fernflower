@@ -120,12 +120,13 @@ public class VarExprent extends Exprent {
     }
     else {
       VarVersion varVersion = getVarVersion();
+      String typeName = getDefinitionType(definition); // Spigot
 
       if (definition) {
         if (processor != null && processor.getVarFinal(varVersion) == VarProcessor.VAR_EXPLICIT_FINAL) {
           buffer.append("final ");
         }
-        appendDefinitionType(buffer);
+        buffer.append(typeName); // Spigot
         buffer.append(" ");
       }
 
@@ -148,7 +149,7 @@ public class VarExprent extends Exprent {
   }
 
   public VarType getDefinitionType() {
-    if (DecompilerContext.getOption(IFernflowerPreferences.USE_DEBUG_VAR_NAMES)) {
+    if (true || DecompilerContext.getOption(IFernflowerPreferences.USE_DEBUG_VAR_NAMES)) { // Spigot
 
       if (lvtEntry != null) {
         if (DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES)) {
@@ -187,7 +188,7 @@ public class VarExprent extends Exprent {
 
           // then try from descriptor
           StructLocalVariableTableAttribute attr = method.methodStruct.getLocalVariableAttr();
-          if (attr != null) {
+          if (false && attr != null) { // Spigot
             String descriptor = attr.getDescriptor(originalIndex, visibleOffset);
             if (descriptor != null) {
               return new VarType(descriptor);
@@ -199,13 +200,15 @@ public class VarExprent extends Exprent {
     return getVarType();
   }
 
-  void appendDefinitionType(TextBuffer buffer) {
-    buffer.append(ExprProcessor.getCastTypeName(getDefinitionType(), Collections.emptyList()));
+  // Spigot start
+  String getDefinitionType(boolean addImport) {
+    return ExprProcessor.getCastTypeName(getDefinitionType(), true, Collections.emptyList(), addImport); // Spigot
+    // Spigot end
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(index, version);
+    return Objects.hash(index, version, getVarType()); // Spigot
   }
 
   @Override
@@ -322,8 +325,9 @@ public class VarExprent extends Exprent {
         TextUtil.isValidIdentifier(lvtEntry.getName(), CodeConstants.BYTECODE_JAVA_22))
       return lvtEntry.getName();
 
+    String typeName = getDefinitionType(definition); // Spigot
     if (processor != null) {
-      String ret = processor.getVarName(varVersion);
+      String ret = processor.getSpigotVarName(varVersion, typeName, false); // Spigot
       if (ret != null)
         return ret;
     }
