@@ -546,7 +546,7 @@ public final class SwitchPatternHelper {
                                              new VarType(CodeConstants.TYPE_OBJECT, 0, className),
                                              processor);
       varExprent.setDefinition(true);
-      processor.setVarName(varExprent.getVarVersion(), VarExprent.getName(varExprent.getVarVersion()));
+      processor.setVarName(varExprent.getVarVersion(), new VarProcessor.MutableString(VarExprent.getName(varExprent.getVarVersion()))); // Spigot
       return varExprent;
     }
 

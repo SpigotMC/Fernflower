@@ -173,7 +173,7 @@ public final class InitializerProcessor {
                 cl.hasField(fExpr.getName(), fExpr.getDescriptor().descriptorString)) {
 
               // interfaces fields should always be initialized inline
-              if (inlineInitializers || isExprentIndependent(assignExpr.getRight(), method)) {
+              if (true || inlineInitializers || isExprentIndependent(assignExpr.getRight(), method)) { // Spigot
                 String keyField = InterpreterUtil.makeUniqueKey(fExpr.getName(), fExpr.getDescriptor().descriptorString);
                 if (!wrapper.getStaticFieldInitializers().containsKey(keyField)) {
                   wrapper.getStaticFieldInitializers().addWithKey(assignExpr.getRight(), keyField);
@@ -297,7 +297,7 @@ public final class InitializerProcessor {
         case Exprent.EXPRENT_VAR -> {
           VarVersion varPair = new VarVersion((VarExprent)expr);
           if (!method.varproc.getExternalVars().contains(varPair)) {
-            String varName = method.varproc.getVarName(varPair);
+            String varName = method.varproc.getVarName(varPair).string; // Spigot
             if (!varName.equals("this") && !varName.endsWith(".this")) { // FIXME: remove direct comparison with strings
               return false;
             }

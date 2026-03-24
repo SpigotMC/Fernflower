@@ -35,10 +35,12 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 
 public class InvocationExprent extends Exprent {
   private static final int INVOKE_SPECIAL = 1;
@@ -332,7 +334,7 @@ public class InvocationExprent extends Exprent {
           if (!leftType.equals(rightType) &&
               (rightType.equals(VarType.VARTYPE_OBJECT) ||
                //try to preserve for navigation in certain cases: virtual call on variable
-               (rightType.getType() != CodeConstants.TYPE_UNKNOWN &&
+               (rightType.getType() != CodeConstants.TYPE_UNKNOWN && rightType.getArrayDim() == 0 && // Spigot
                 instance.type == EXPRENT_VAR &&
                 invocationType == INVOKE_VIRTUAL &&
                 !leftType.equals(VarType.VARTYPE_OBJECT)))) {
@@ -409,6 +411,7 @@ public class InvocationExprent extends Exprent {
 
     boolean firstParameter = true;
     int start = isEnum ? 2 : 0;
+    boolean impossibleAccess = false; // Spigot
     for (int i = start; i < parameters.size(); i++) {
       if (mask == null || mask.get(i) == null) {
         TextBuffer buff = new TextBuffer();
@@ -419,6 +422,11 @@ public class InvocationExprent extends Exprent {
 
         // the last "new Object[0]" in the vararg call is not printed
         if (buff.length() > 0) {
+          // Spigot start
+          if (VarExprent.VAR_NAMELESS_ENCLOSURE.equals(buff.toString())) {
+            impossibleAccess = true;
+          }
+          // Spigot end
           if (!firstParameter) {
             buf.append(", ");
           }
@@ -430,6 +438,11 @@ public class InvocationExprent extends Exprent {
     }
 
     buf.append(')');
+    // Spigot start
+    if (impossibleAccess) {
+      buf.prepend("// $FF impossible: ");
+    }
+    // Spigot end
 
     return buf;
   }
@@ -518,11 +531,35 @@ public class InvocationExprent extends Exprent {
     return !isStatic && parameters.isEmpty() && className.equals(UNBOXING_METHODS.get(name));
   }
 
+  public static Set<StructClass> addAllSuper(Set<StructClass> set, String clazz) {
+    StructClass cstr = DecompilerContext.getStructContext().getClass(clazz);
+    if (cstr == null) {
+      return set;
+    }
+    set.add(cstr);
+    for (String inter : cstr.getInterfaceNames()) {
+      addAllSuper(set, inter);
+    }
+    addAllSuper(set, cstr.superClass.getString());
+
+    return set;
+  }
+
   private List<StructMethod> getMatchedDescriptors() {
     List<StructMethod> matches = new ArrayList<>();
     StructClass cl = DecompilerContext.getStructContext().getClass(className);
     if (cl == null) return matches;
 
+    // Spigot start
+    for (StructClass parents : addAllSuper(new HashSet<StructClass>(), className)) {
+      addMatchedDescriptors(parents, matches);
+    }
+
+    return matches;
+  }
+
+  private List<StructMethod> addMatchedDescriptors(StructClass cl, List<StructMethod> matches) {
+    // Spigot end
     nextMethod:
     for (StructMethod mt : cl.getMethods()) {
       if (name.equals(mt.getName())) {

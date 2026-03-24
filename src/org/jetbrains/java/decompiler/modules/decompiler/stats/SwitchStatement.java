@@ -14,11 +14,15 @@ import org.jetbrains.java.decompiler.modules.decompiler.StatEdge;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeDirection;
 import org.jetbrains.java.decompiler.modules.decompiler.StatEdge.EdgeType;
 import org.jetbrains.java.decompiler.modules.decompiler.SwitchHelper;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.AssignmentExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.ConstExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.ExitExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.Exprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.FieldExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.FunctionExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.InvocationExprent;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.SwitchExprent;
+import org.jetbrains.java.decompiler.modules.decompiler.exps.VarExprent;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.struct.match.IMatchable;
 import org.jetbrains.java.decompiler.util.StartEndPair;
@@ -175,8 +179,26 @@ public final class SwitchStatement extends Statement {
   public @NotNull TextBuffer toJava(int indent, @NotNull BytecodeMappingTracer tracer) {
     SwitchHelper.simplifySwitchOnEnum(this);
     TextBuffer buf = new TextBuffer();
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
-    buf.append(first.toJava(indent, tracer));
+    // Spigot start
+    TextBuffer content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.containsOnlyWhitespaces()) {
+      buf.appendLineSeparator();
+    }
+    content = first.toJava(indent, tracer);
+    buf.append(content);
+    if (first instanceof BasicBlockStatement && !content.containsOnlyWhitespaces()) {
+      List<Exprent> exps = first.getExprents();
+      if (exps.size() != 0) {
+        Exprent e = exps.get(exps.size() - 1);
+        if (!(e instanceof InvocationExprent
+                || e instanceof FunctionExprent
+                || (e instanceof AssignmentExprent && !(((AssignmentExprent) e).getLeft() instanceof VarExprent && ((VarExprent) ((AssignmentExprent) e).getLeft()).isDefinition())))) {
+          buf.appendLineSeparator();
+        }
+      }
+    }
+    // Spigot end
     if (isLabeled()) {
       buf.appendIndent(indent).append("label").append(Integer.toString(id)).append(":").appendLineSeparator();
       tracer.incrementCurrentSourceLine();

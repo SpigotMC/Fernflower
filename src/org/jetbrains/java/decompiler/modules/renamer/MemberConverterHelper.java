@@ -29,12 +29,12 @@ public class MemberConverterHelper implements IMemberIdentifierRenamer {
   public boolean toBeRenamed(Type elementType, String className, String element, String descriptor) {
     String value = elementType == Type.ELEMENT_CLASS ? className : element;
     return value == null ||
-           value.length() <= 2 ||
+           // value.length() <= 2 || // Spigot
            !isValidIdentifier(elementType == Type.ELEMENT_METHOD, value) ||
            KEYWORDS.contains(value) ||
            elementType == Type.ELEMENT_CLASS && (
              RESERVED_WINDOWS_NAMESPACE.contains(value.toLowerCase(Locale.ENGLISH)) ||
-             value.length() > 255 - ".class".length());
+             value.length() > Short.MAX_VALUE - ".class".length()); // Spigot
   }
 
   /**
@@ -57,6 +57,12 @@ public class MemberConverterHelper implements IMemberIdentifierRenamer {
     if (!Character.isJavaIdentifierStart(identifier.charAt(0))) {
       return false;
     }
+
+    // Spigot start
+    if (!isMethod && "package-info".equals(identifier)) {
+      return true;
+    }
+    // Spigot end
 
     char[] chars = identifier.toCharArray();
 
@@ -90,7 +96,7 @@ public class MemberConverterHelper implements IMemberIdentifierRenamer {
     }
     else {
       String name = shortName.substring(index);
-      if (setNonStandardClassNames.contains(name)) {
+      if (false && setNonStandardClassNames.contains(name)) { // Spigot
         return "Inner" + name + "_" + (classCounter++);
       }
       else {

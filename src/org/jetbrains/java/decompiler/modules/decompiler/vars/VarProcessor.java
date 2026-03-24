@@ -17,6 +17,7 @@ import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.StatementIterator;
 import org.jetbrains.java.decompiler.util.TextUtil;
+import org.jetbrains.java.decompiler.util.VarHelper; // Spigot
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -28,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,8 +45,8 @@ public class VarProcessor {
   private final VarNamesCollector varNamesCollector = new VarNamesCollector();
   private final StructMethod method;
   private final MethodDescriptor methodDescriptor;
-  private Map<VarVersion, String> mapVarNames = new HashMap<>();
-  private final Map<VarVersion, String> mapPurgedAssignmentNames = new HashMap<>();
+  private Map<VarVersion, MutableString> mapVarNames = new HashMap<>();
+  private final Map<VarVersion, MutableString> mapPurgedAssignmentNames = new HashMap<>();
   private final Map<VarVersion, LocalVariable> mapVarLVTs = new HashMap<>();
   private VarVersionsProcessor varVersions;
   private final Map<VarVersion, String> thisVars = new HashMap<>();
@@ -62,6 +64,8 @@ public class VarProcessor {
     firstParameterVarIndex = isEnumInit ? 3 : !mt.hasModifier(CodeConstants.ACC_STATIC) ? 1 : 0;
     firstParameterPosition = isEnumInit ? 2 : 0;
   }
+
+  public VarHelper helper = new VarHelper(); // Spigot
 
   public void setVarVersions(RootStatement root) {
     VarVersionsProcessor oldProcessor = varVersions;
@@ -116,17 +120,17 @@ public class VarProcessor {
     listVars.sort(Comparator.<VarVersion, Boolean>comparing(o -> !mapPurgedAssignmentNames.containsKey(o))
                     .thenComparingInt(o -> o.var));
 
-    Map<String, Integer> mapNames = new HashMap<>();
+    Map<MutableString, Integer> mapNames = new HashMap<>();
 
     for (VarVersion pair : listVars) {
-      String name = mapVarNames.get(pair);
+      MutableString name = mapVarNames.get(pair);
 
       boolean lvtName = false;
       VarVersion key = mapOriginalVarIndices.get(pair.var);
       if (key != null && !hasNotInsideLVT.contains(pair)) {
         String debugName = mapDebugVarNames.get(key);
         if (debugName != null && TextUtil.isValidIdentifier(debugName, method.getBytecodeVersion())) {
-          name = debugName;
+          name.string = debugName;
           lvtName = true;
         }
       }
@@ -136,7 +140,7 @@ public class VarProcessor {
       mapNames.put(name, counter == null ? counter = 0 : ++counter);
 
       if (counter > 0 && !lvtName && !mapPurgedAssignmentNames.containsKey(pair)) {
-        name += String.valueOf(counter);
+        name.string += String.valueOf(counter);
       }
 
       mapVarNames.put(pair, name);
@@ -152,8 +156,8 @@ public class VarProcessor {
   }
 
   public void refreshVarNames(VarNamesCollector vc) {
-    Map<VarVersion, String> tempVarNames = new HashMap<>(mapVarNames);
-    for (Entry<VarVersion, String> ent : tempVarNames.entrySet()) {
+    Map<VarVersion, MutableString> tempVarNames = new HashMap<>(mapVarNames);
+    for (Entry<VarVersion, MutableString> ent : tempVarNames.entrySet()) {
       mapVarNames.put(ent.getKey(), mapPurgedAssignmentNames.containsKey(ent.getKey()) ?
                                     ent.getValue() : vc.getFreeName(ent.getValue()));
     }
@@ -173,19 +177,40 @@ public class VarProcessor {
     }
   }
 
-  public String getVarName(VarVersion pair) {
+  public MutableString getVarName(VarVersion pair) {
     return mapVarNames == null ? null : mapVarNames.get(pair);
   }
 
-  public void setVarName(VarVersion pair, String name) {
+  public String getSpigotVarName(VarVersion pair, String type, boolean varargs) {
+    // Spigot Start
+    MutableString name = mapVarNames.get(pair);
+    if (name != null) {
+      if (name.helped || name.string.equals("this") || name.string.endsWith(".this")) {
+        return name.string;
+      }
+      String newName = helper.help(name.string, type, varargs);
+      if (name.string.startsWith("var")) {
+        name.string = newName;
+      } else {
+        helper.used.add(name.string);
+      }
+      name.helped = true;
+
+      return name.string;
+    }
+    return null;
+    // Spigot End
+  }
+
+  public void setVarName(VarVersion pair, MutableString name) {
     mapVarNames.put(pair, name);
   }
 
-  public String getAssignedVarName(VarVersion pair) {
+  public MutableString getAssignedVarName(VarVersion pair) {
     return mapPurgedAssignmentNames.get(pair);
   }
 
-  public void setAssignedVarName(VarVersion pair, String name) {
+  public void setAssignedVarName(VarVersion pair, MutableString name) {
     if (name == null) {
       mapPurgedAssignmentNames.remove(pair);
       return;
@@ -193,7 +218,7 @@ public class VarProcessor {
     mapPurgedAssignmentNames.put(pair, name);
   }
 
-  public Collection<String> getVarNames() {
+  public Collection<MutableString> getVarNames() {
     return mapVarNames != null ? mapVarNames.values() : Collections.emptySet();
   }
 
@@ -265,5 +290,32 @@ public class VarProcessor {
 
   public LocalVariable getVarLVTEntry(VarVersion var) {
     return mapVarLVTs.get(var);
+  }
+
+  public static class MutableString {
+
+    public String string;
+    boolean helped;
+
+    public MutableString(String string) {
+      this.string = string;
+    }
+
+    @Override
+    public int hashCode() {
+      int hash = 5;
+      hash = 71 * hash + Objects.hashCode(this.string);
+      return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return (string == null) ? obj == null : string.equals(obj);
+    }
+
+    @Override
+    public String toString() {
+      return string == null ? "null" : string.toString();
+    }
   }
 }

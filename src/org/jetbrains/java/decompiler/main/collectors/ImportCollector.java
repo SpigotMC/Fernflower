@@ -106,6 +106,12 @@ public class ImportCollector {
   }
 
   public String getNestedName(String fullName, boolean imported) {
+    // Spigot start
+    return getNestedName(fullName, imported, true);
+  }
+
+  public String getNestedName(String fullName, boolean imported, boolean addImport) {
+    // Spigot end
     ClassNode node = DecompilerContext.getClassProcessor().getMapRootClasses().get(fullName.replace('.', '/')); //todo[r.sh] anonymous classes?
 
     String nestedName;
@@ -164,7 +170,7 @@ public class ImportCollector {
     if (existsDefaultClass || (mapSimpleNames.containsKey(outerShortName) && !packageName.equals(mapSimpleNames.get(outerShortName)))) {
       return packageName + "." + nestedName;
     }
-    else if (!mapSimpleNames.containsKey(outerShortName)) {
+    else if (addImport && !mapSimpleNames.containsKey(outerShortName)) { // Spigot
       mapSimpleNames.put(outerShortName, packageName);
       if (!imported) {
         setNotImportedNames.add(outerShortName);
@@ -194,8 +200,9 @@ public class ImportCollector {
                 !JAVA_LANG_PACKAGE.equals(ent.getValue()) &&
                 !ent.getValue().equals(currentPackagePoint)
       )
-      .sorted(Map.Entry.<String, String>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
+      // .sorted(Map.Entry.<String, String>comparingByValue().thenComparing(Map.Entry.comparingByKey())) // Spigot
       .map(ent -> ent.getValue() + "." + ent.getKey())
+      .sorted() // Spigot correct sort order
       .collect(Collectors.toList());
   }
 }

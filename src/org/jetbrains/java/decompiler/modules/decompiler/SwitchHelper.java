@@ -340,6 +340,7 @@ public final class SwitchHelper {
   }
 
   private static boolean canBeRules(@NotNull SwitchStatement statement) {
+    if (true) return false; // Spigot
     if (statement.isLabeled()) {
       return false;
     }

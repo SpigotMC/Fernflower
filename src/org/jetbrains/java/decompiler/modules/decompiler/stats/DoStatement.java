@@ -61,7 +61,13 @@ public final class DoStatement extends Statement {
   @Override
   public @NotNull TextBuffer toJava(int indent, BytecodeMappingTracer tracer) {
     TextBuffer buf = new TextBuffer();
-    buf.append(ExprProcessor.listToJava(varDefinitions, indent, tracer));
+
+    TextBuffer content = ExprProcessor.listToJava(varDefinitions, indent, tracer);
+    buf.append(content);
+    if (!content.containsOnlyWhitespaces()) {
+      buf.appendLineSeparator();
+    }
+
     if (isLabeled()) {
       buf.appendIndent(indent).append("label").append(Integer.toString(id)).append(":").appendLineSeparator();
       tracer.incrementCurrentSourceLine();
@@ -70,14 +76,14 @@ public final class DoStatement extends Statement {
       case DO -> {
         buf.appendIndent(indent).append("while(true) {").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
-        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, false, tracer));
+        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
         buf.appendIndent(indent).append("}").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
       }
       case DO_WHILE -> {
         buf.appendIndent(indent).append("do {").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
-        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, false, tracer));
+        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
         buf.appendIndent(indent).append("} while(").append(
           Objects.requireNonNull(conditionExprent.get(0)).toJava(indent, tracer)).append(");").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
@@ -86,7 +92,7 @@ public final class DoStatement extends Statement {
         buf.appendIndent(indent).append("while(").append(
           Objects.requireNonNull(conditionExprent.get(0)).toJava(indent, tracer)).append(") {").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
-        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, false, tracer));
+        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
         buf.appendIndent(indent).append("}").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
       }
@@ -102,7 +108,7 @@ public final class DoStatement extends Statement {
           .append(firstIncExprent.toJava(indent, tracer)).append(") {")
           .appendLineSeparator();
         tracer.incrementCurrentSourceLine();
-        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, false, tracer));
+        buf.append(ExprProcessor.jmpWrapper(first, indent + 1, true, tracer));
         buf.appendIndent(indent).append("}").appendLineSeparator();
         tracer.incrementCurrentSourceLine();
       }

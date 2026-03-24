@@ -408,7 +408,7 @@ public final class SecondaryFunctionsHelper {
           FunctionExprent fparam = (FunctionExprent)param;
 
           int ftype = fparam.getFuncType();
-          boolean canSimplify = false;
+          boolean canSimplify = true; // Spigot
           switch (ftype) {
             case FunctionExprent.FUNCTION_BOOL_NOT:
               Exprent newexpr = fparam.getLstOperands().get(0);
